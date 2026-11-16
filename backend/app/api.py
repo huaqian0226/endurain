@@ -9,6 +9,7 @@ import modules.activities.activity.public_router as activity_public_router
 # Alphabetized router imports
 import modules.activities.activity.router as activity_router
 import modules.activities.activity.summary_router as activity_summary_router
+import modules.activities.activity.workbench_router as workbench_router
 import modules.activities.activity_ingestion.router as activity_ingestion_router
 import modules.activities.activity_laps.public_router as activity_laps_public_router
 import modules.activities.activity_laps.router as activity_laps_router
@@ -394,6 +395,8 @@ router.include_router(
     prefix=core_config.ROOT_PATH + "/public/users",
     tags=["public_users"],
 )
+router.include_router(workbench_router.router, prefix=core_config.ROOT_PATH + "/workbench", tags=["workbench"])
+
 router.include_router(
     core_router.router,
     tags=["core"],

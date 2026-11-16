@@ -100,6 +100,8 @@ export function mapActivity(dto: ActivityDto): Activity {
     visibility: dto.visibility ?? 0,
     isHidden: dto.is_hidden,
     gearId: dto.gear_id ?? null,
+    equipmentConfirmed: dto.equipment_confirmed ?? false,
+    equipment: dto.equipment ?? [],
     version: dto.version ?? null,
 
     // The UTC instant plus the recording timezone. Views localize for display
@@ -862,6 +864,8 @@ export async function editActivity(
   version?: number | null,
 ): Promise<Activity> {
   const body: ActivityEditDto = {
+    gear_id: input.gearId,
+    equipment_selection: input.equipmentSelection,
     name: input.name,
     activity_type: input.activityType,
     description: input.description.trim() ? input.description : null,
@@ -887,4 +891,16 @@ export async function editActivity(
     headers: ifMatchHeaders(version),
   })
   return mapActivity(dto)
+}
+
+/**
+ * Fetches authorized household equipment for the native activity editor.
+ * @param signal - Optional cancellation signal.
+ * @returns The source-versioned physical equipment catalogue.
+ * @throws {HttpError} When the household source is unavailable or access is denied.
+ */
+export async function fetchEquipmentCandidates(
+  signal?: AbortSignal,
+): Promise<Schemas['EquipmentCandidatesRead']> {
+  return apiFetch('/workbench/equipment-candidates', { signal })
 }

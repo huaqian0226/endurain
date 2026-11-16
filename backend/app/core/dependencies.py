@@ -149,3 +149,13 @@ def validate_pagination_values_on_query(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail="Invalid number of records, must be higher than 0",
         )
+
+
+def get_household_catalogue():
+    """Resolve the fixed-origin household transport at an HTTP entry point."""
+    from core.config import settings
+    from core.jiadang import HouseholdCatalogue
+
+    return HouseholdCatalogue(
+        settings.WORKBENCH_JIADANG_URL, settings.WORKBENCH_JIADANG_TOKEN, settings.WORKBENCH_JIADANG_USER_ID
+    ).read

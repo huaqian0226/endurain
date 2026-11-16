@@ -272,5 +272,23 @@
     "inlineSkating": "Inline skating",
     "hiit": "HIIT",
     "jumpRope": "Jump rope"
+  },
+  "equipment": {
+    "title": "Actual equipment",
+    "primaryGear": "Primary vehicle or gear",
+    "noPrimaryGear": "No primary gear selected",
+    "currentGear": "Current gear #{id}",
+    "help": "Select what you actually carried or used in this activity. Timer duration does not measure device power-on time.",
+    "loading": "Loading household equipment…",
+    "loadError": "The equipment source is unavailable. Existing selections are preserved.",
+    "retry": "Retry",
+    "empty": "No individually identified equipment is authorized yet.",
+    "unavailableItem": "Previously selected item {id} (source unavailable)",
+    "notSelected": "Not selected",
+    "carried": "Carried",
+    "used": "Used",
+    "confirmed": "I confirm this activity’s equipment selection",
+    "confirmedState": "Confirmed, including an empty selection.",
+    "unknownState": "Unconfirmed: equipment use remains unknown."
   }
 }

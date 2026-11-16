@@ -45,6 +45,7 @@ const activityDto: ActivityDto = {
   activity_type: 1,
   distance: 10000,
   is_hidden: false,
+  equipment_confirmed: false,
   visibility: 1,
   total_elapsed_time: 3600,
   total_timer_time: 3500,

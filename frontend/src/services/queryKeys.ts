@@ -137,6 +137,7 @@ export const queryKeys = {
    * extend with `details`/`detail` when the activities feature lands.
    */
   activities: {
+    equipmentCandidates: () => ['activities', 'equipment-candidates'] as const,
     /** Broad prefix; invalidating this cascades to every activities query. */
     all: () => ['activities'] as const,
     lists: () => ['activities', 'list'] as const,

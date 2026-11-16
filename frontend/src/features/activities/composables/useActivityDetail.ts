@@ -22,6 +22,7 @@ import { fetchGearsByType } from '@/features/gears/services/gears'
 import { fetchActivityOwner } from '@/features/activities/services/activityOwner'
 import {
   deleteActivity,
+  fetchEquipmentCandidates,
   editActivity,
   fetchActivity,
   fetchActivityExerciseTitles,
@@ -371,5 +372,21 @@ export function useEditActivityMutation() {
     onSettled: () => {
       void client.invalidateQueries({ queryKey: queryKeys.activities.all() })
     },
+  })
+}
+
+/**
+ * Loads the household authority only while the activity editor is open.
+ * @param enabled - Whether the editor is open.
+ * @returns The source catalogue with loading, empty, and error states.
+ * @throws {HttpError} Through the query error state when the source is unavailable.
+ */
+export function useEquipmentCandidatesQuery(enabled: MaybeRefOrGetter<boolean>) {
+  return useQuery({
+    queryKey: queryKeys.activities.equipmentCandidates(),
+    queryFn: ({ signal }) => fetchEquipmentCandidates(signal),
+    enabled: computed(() => toValue(enabled)),
+    retry: false,
+    staleTime: 0,
   })
 }

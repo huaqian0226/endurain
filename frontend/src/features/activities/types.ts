@@ -211,6 +211,8 @@ export interface Activity {
   visibility: number
   isHidden: boolean
   gearId: number | null
+  equipmentConfirmed?: boolean
+  equipment?: Schemas['EquipmentSelection'][]
 
   /**
    * Row version behind the `ETag`. Sent back as `If-Match` on save so an edit
@@ -302,6 +304,9 @@ export interface ActivityOwner {
 
 /** The editable fields of an activity, as bound by the edit form. */
 export interface ActivityEditInput {
+  gearId?: number | null
+  equipmentSelection?: Schemas['EquipmentEdit']
+
   name: string
   activityType: number
   description: string

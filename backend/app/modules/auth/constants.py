@@ -54,6 +54,7 @@ ACTIVITIES_SCOPE: Final[tuple[str, ...]] = (
     "activities:read",
     "activities:write",
     "activities:upload",
+    "workbench:read",
 )
 IDENTITY_PROVIDERS_REGULAR_SCOPE: Final[tuple[str, ...]] = ("identity_providers:read",)
 IDENTITY_PROVIDERS_ADMIN_SCOPE: Final[tuple[str, ...]] = ("identity_providers:write",)
@@ -92,6 +93,7 @@ SCOPE_DICT: Final[dict[str, str]] = {
     "activities:read": "Read privileges over activities",
     "activities:write": "Write privileges over activities",
     "activities:upload": "Upload privileges over activities",
+    "workbench:read": "Read minimal owned vehicle and equipment usage projections",
     "followers:read": "Read privileges over the follower/following graph",
     "followers:write": "Follow, unfollow, accept and remove followers",
     "health:read": "Read privileges over health data",

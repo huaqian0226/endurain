@@ -15,6 +15,7 @@ one owner.
 """
 
 import calendar
+from collections.abc import Callable
 from datetime import UTC, date, datetime, time, timedelta
 
 from sqlalchemy.orm import Session
@@ -29,6 +30,8 @@ import modules.activities.activity.crud as activity_crud
 import modules.activities.activity.event_publishers as activity_event_publishers
 import modules.activities.activity.schema as activity_schema
 import modules.activities.activity.stats as activity_stats
+import modules.activities.activity.workbench_crud as workbench_crud
+import modules.activities.activity.workbench_service as workbench_service
 import modules.activities.contributor_registry as activities_contributor_registry
 import modules.followers.integration_service as followers_integration
 import modules.gears.gear.dependencies as gears_dependencies
@@ -602,6 +605,8 @@ def get_activity(activity_id: int, requester_user_id: int, db: Session) -> activ
             extra=core_logger.context(activity_id=activity_id, requester_user_id=requester_user_id),
         )
         raise core_exceptions.NotFoundError(f"Activity {activity_id} not found")
+    if activity.user_id == requester_user_id:
+        activity.equipment = workbench_crud.equipment_for_activity(activity_id, db)
     return _with_thumbnail_urls([activity])[0]
 
 
@@ -633,6 +638,7 @@ def edit_activity(
     db: Session,
     *,
     if_match: str | None = None,
+    catalogue: Callable[[int], dict] | None = None,
 ) -> activity_schema.ActivityRead:
     """Apply partial updates to one of the user's activities.
 
@@ -647,6 +653,7 @@ def edit_activity(
         activity_attributes: The fields to change.
         db: Database session.
         if_match: The ``If-Match`` precondition, or None.
+        catalogue: The configured household identity authority.
 
     Returns:
         The updated activity.
@@ -655,6 +662,14 @@ def edit_activity(
         "Editing an activity",
         extra=core_logger.context(activity_id=activity_id, user_id=user_id),
     )
+    selection = activity_attributes.equipment_selection
+    catalog_revision = ""
+    if selection is not None:
+        if if_match is None:
+            raise core_exceptions.PreconditionFailedError("Equipment edits require the current activity version")
+        if activity_crud.get_activity_by_id_from_user_id(activity_id, user_id, db) is None:
+            raise core_exceptions.NotFoundError("Activity not found")
+        catalog_revision = workbench_service.validate_equipment(user_id, selection, catalogue)
     gears_dependencies.require_owned_gears(user_id, [activity_attributes.gear_id], db)
     # Only the fields the client actually sent; the CRUD applies the same set.
     changed_fields = [field for field in activity_attributes.model_dump(exclude_unset=True) if field != "id"]
@@ -673,12 +688,15 @@ def edit_activity(
         raise core_exceptions.PreconditionFailedError(
             "The activity was modified by someone else; re-read it and retry"
         ) from err
+    if selection is not None:
+        workbench_crud.replace_equipment(activity_id, selection, catalog_revision, db)
     activity_event_publishers.publish_activity_updated(activity_id, user_id, db, changed_fields=changed_fields)
     db.commit()
     logger.info(
         "Edited an activity",
         extra=core_logger.context(activity_id=activity_id, user_id=user_id, changed_fields=sorted(changed_fields)),
     )
+    updated.equipment = workbench_crud.equipment_for_activity(activity_id, db)
     return _with_thumbnail_urls([updated])[0]
 
 

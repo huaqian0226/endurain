@@ -261,6 +261,7 @@ def edit_activity(
         Depends(core_database.get_db),
     ],
     response: Response,
+    catalogue: Annotated[Callable[[int], dict], Depends(core_dependencies.get_household_catalogue)],
     if_match: Annotated[str | None, Header(alias=core_etag.IF_MATCH_HEADER)] = None,
 ) -> activity_schema.ActivityRead:
     """Apply partial updates to one of the authenticated user's activities.
@@ -269,7 +270,9 @@ def edit_activity(
     a stale tag is refused with 412 rather than silently overwriting whoever
     saved in between.
     """
-    activity = activity_service.edit_activity(activity_id, token_user_id, activity_attributes, db, if_match=if_match)
+    activity = activity_service.edit_activity(
+        activity_id, token_user_id, activity_attributes, db, if_match=if_match, catalogue=catalogue
+    )
     if activity.version is not None:
         response.headers["ETag"] = core_etag.format_etag(activity.version)
     return activity

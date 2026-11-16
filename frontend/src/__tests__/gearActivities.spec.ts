@@ -18,6 +18,7 @@ const activityDto: GearActivityDto = {
   distance: 25_000,
   total_timer_time: 3600,
   is_hidden: false,
+  equipment_confirmed: false,
 }
 
 const mappedActivity: GearActivity = {
@@ -37,7 +38,14 @@ describe('mapGearActivity', () => {
 
   it('defaults absent optionals to null', () => {
     expect(
-      mapGearActivity({ id: 7, name: 'Run', activity_type: 2, distance: 5000, is_hidden: false }),
+      mapGearActivity({
+        id: 7,
+        name: 'Run',
+        activity_type: 2,
+        distance: 5000,
+        is_hidden: false,
+        equipment_confirmed: false,
+      }),
     ).toEqual({
       id: 7,
       name: 'Run',

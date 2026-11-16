@@ -32,6 +32,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 import core.rate_limit as core_rate_limit
 import modules.activities.activity.router as activity_router
+import modules.activities.activity.workbench_router as workbench_router
 import modules.activities.activity_ingestion.router as ingestion_router
 import modules.activities.activity_media.router as activity_media_router
 import modules.auth.identity_providers.public_router as idp_public_router
@@ -68,6 +69,7 @@ def _registered_limits(func) -> list[str]:
 # source tree and fails when a decorated route is missing from it, so a new
 # sensitive endpoint cannot be added without also being asserted here.
 _TIERED_ENDPOINTS = [
+    pytest.param(workbench_router.map_vehicle, core_rate_limit.WRITE, id="workbench-map-vehicle"),
     pytest.param(auth_router.login_for_access_token, core_rate_limit.SENSITIVE, id="login"),
     pytest.param(auth_router.verify_mfa_and_login, core_rate_limit.SENSITIVE, id="mfa-verify"),
     pytest.param(auth_router.refresh_token, core_rate_limit.WRITE, id="token-refresh"),

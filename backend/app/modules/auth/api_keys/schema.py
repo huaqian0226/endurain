@@ -73,7 +73,7 @@ class UsersApiKeyCreate(BaseModel):
     @classmethod
     def scopes_must_be_valid(cls, v: list[str]) -> list[str]:
         """
-        Validate API keys only grant activity upload access.
+        Validate API keys grant only explicitly supported limited scopes.
 
         Args:
             v: List of scope strings to validate.

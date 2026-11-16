@@ -22,6 +22,7 @@ from pydantic import (
 
 import core.pagination as core_pagination
 import core.timezone as core_timezone
+import modules.activities.activity.workbench_schema as workbench_schema
 
 PositiveInt = Annotated[StrictInt, Field(ge=1)]
 VisibilityValue = Annotated[StrictInt, Field(ge=0, le=2)]
@@ -211,6 +212,8 @@ class ActivityRead(ActivityBase):
     map_thumbnail_path: str | None = Field(default=None, max_length=500, exclude=True)
     map_thumbnail_url: str | None = None
     version: int | None = Field(default=None, ge=1)
+    equipment_confirmed: bool = False
+    equipment: list[workbench_schema.EquipmentSelection] = Field(default_factory=list)
 
 
 class ActivitySportStats(BaseModel):
@@ -348,6 +351,7 @@ class ActivityEdit(BaseModel):
     visibility: VisibilityValue | None = None
     is_hidden: StrictBool | None = None
     gear_id: PositiveInt | None = None
+    equipment_selection: workbench_schema.EquipmentEdit | None = None
     hide_start_time: StrictBool | None = None
     hide_location: StrictBool | None = None
     hide_map: StrictBool | None = None

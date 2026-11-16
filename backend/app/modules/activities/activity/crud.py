@@ -1489,6 +1489,11 @@ def edit_activity(
     for key, value in activity_serializers.to_update_values(activity_attributes).items():
         setattr(db_activity, key, value)
 
+    selection = getattr(activity_attributes, "equipment_selection", None)
+    if selection is not None:
+        db_activity.equipment_confirmed = selection.confirmed
+        db_activity.version += 1
+
     # The version bump lives in the ORM's UPDATE, so flush before reading it
     # back — the caller serializes this row into its response and would
     # otherwise hand out a stale ETag.

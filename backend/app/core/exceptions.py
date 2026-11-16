@@ -410,3 +410,12 @@ def register_exception_handlers(app: FastAPI) -> None:
     app.add_exception_handler(HTTPException, http_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(StarletteHTTPException, http_exception_handler)  # type: ignore[arg-type]
     app.add_exception_handler(RequestValidationError, validation_error_handler)  # type: ignore[arg-type]
+
+
+class CatalogueUnavailableError(DomainError):
+    """The physical equipment authority did not return a current allowed catalogue."""
+
+    status_code = 503
+    code = "catalogue-unavailable"
+    title = "Equipment catalogue unavailable"
+    default_detail = "The household equipment catalogue is unavailable; retry later"

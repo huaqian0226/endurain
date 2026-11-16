@@ -5,7 +5,7 @@ import secrets
 
 import modules.auth.token_hashing as token_hashing
 
-SUPPORTED_API_KEY_SCOPES = frozenset({"activities:upload"})
+SUPPORTED_API_KEY_SCOPES = frozenset({"activities:upload", "workbench:read"})
 
 
 def generate_api_key() -> str:
@@ -47,7 +47,7 @@ def validate_api_key_scopes(
     """
     Validate requested scopes against supported API-key scopes.
 
-    API keys currently support only activity uploads. Keeping this
+    API keys support activity uploads and owner-scoped workbench projections. Keeping this
     allow-list separate from the full JWT scope set prevents API keys
     from silently gaining access when new unified-auth endpoints are
     added later.

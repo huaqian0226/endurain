@@ -272,5 +272,23 @@
     "inlineSkating": "轮滑",
     "hiit": "HIIT",
     "jumpRope": "跳绳"
+  },
+  "equipment": {
+    "title": "实际携带与使用装备",
+    "primaryGear": "主要车辆或装备",
+    "noPrimaryGear": "未选主要装备",
+    "currentGear": "当前装备 #{id}",
+    "help": "选择本次活动实际携带或使用的装备。活动计时不代表设备开机时长。",
+    "loading": "正在读取家当实物…",
+    "loadError": "装备来源暂不可用，已有选择保留。",
+    "retry": "重试",
+    "empty": "尚无已明确单件身份并授权的装备。",
+    "unavailableItem": "原已选实物 {id}（来源暂不可用）",
+    "notSelected": "未选择",
+    "carried": "携带",
+    "used": "使用",
+    "confirmed": "我已确认本次活动的装备选择",
+    "confirmedState": "已确认，空选择表示明确未带额外装备。",
+    "unknownState": "未确认：实际装备保持未知。"
   }
 }

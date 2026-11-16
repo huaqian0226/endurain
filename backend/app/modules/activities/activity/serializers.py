@@ -63,6 +63,8 @@ def apply_visibility_mask(
     """
     if is_owner:
         return schema
+    schema.equipment = []
+    schema.equipment_confirmed = False
     if mask_private_notes:
         schema.private_notes = None
     if schema.hide_start_time:
@@ -158,6 +160,9 @@ def to_update_values(activity_attributes: pydantic.BaseModel) -> dict:
     for markdown_field in ("description", "private_notes"):
         if markdown_field in values:
             values[markdown_field] = core_sanitization.sanitize_markdown(values[markdown_field])
+    values.pop("equipment_selection", None)
+    values.pop("equipment", None)
+    values.pop("equipment_confirmed", None)
     values.pop("id", None)
     return values
 

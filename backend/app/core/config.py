@@ -104,6 +104,11 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    WORKBENCH_JIADANG_URL: str | None = None
+    WORKBENCH_JIADANG_TOKEN: str | None = None
+    WORKBENCH_JIADANG_USER_ID: int | None = None
+    WORKBENCH_EXCLUDED_ACTIVITY_IDS: list[int] = []
+
     # --- Logging / environment ---
     LOG_LEVEL: str = "info"
     ENVIRONMENT: str = "production"

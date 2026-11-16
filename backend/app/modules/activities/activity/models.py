@@ -11,6 +11,7 @@ from sqlalchemy import (
     ForeignKey,
     Index,
     String,
+    UniqueConstraint,
 )
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -173,6 +174,7 @@ class Activity(Base):
         nullable=False,
         comment="Activity creation date (DATETIME)",
     )
+    equipment_confirmed: Mapped[bool] = mapped_column(nullable=False, default=False, server_default="false")
     version: Mapped[int] = mapped_column(
         nullable=False,
         server_default="1",
@@ -379,3 +381,28 @@ class Activity(Base):
         nullable=True,
         comment="Earliest time the thumbnail backfill retries an activity that has no thumbnail",
     )
+
+
+class WorkbenchVehicle(Base):
+    """A stable workbench vehicle reference to an existing owned gear."""
+
+    __tablename__ = "workbench_vehicles"
+    __table_args__ = (UniqueConstraint("user_id", "gear_id"),)
+    vehicle_uuid: Mapped[str] = mapped_column(String(36), primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    gear_id: Mapped[int] = mapped_column(ForeignKey("gear.id", ondelete="CASCADE"), nullable=False)
+    instance_id: Mapped[str] = mapped_column(String(100), nullable=False)
+    excluded_activity_ids: Mapped[list] = mapped_column(JSON, nullable=False, default=list)
+    revision: Mapped[int] = mapped_column(nullable=False, default=1)
+    __mapper_args__ = {"version_id_col": revision}  # noqa: RUF012
+
+
+class ActivityEquipment(Base):
+    """One explicitly selected physical item per activity, with source evidence."""
+
+    __tablename__ = "activity_equipment"
+    activity_id: Mapped[int] = mapped_column(ForeignKey("activities.id", ondelete="CASCADE"), primary_key=True)
+    asset_id: Mapped[str] = mapped_column(String(36), primary_key=True)
+    use_mode: Mapped[str] = mapped_column(String(16), nullable=False)
+    catalog_revision: Mapped[str] = mapped_column(String(250), nullable=False)
+    confirmed_at: Mapped[str] = mapped_column(String(40), nullable=False)

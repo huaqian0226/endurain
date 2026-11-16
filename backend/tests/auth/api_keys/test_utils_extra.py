@@ -74,7 +74,7 @@ class TestValidateApiKeyScopes:
 
     def test_supported_api_key_scopes_constant(self):
         """Test that the API-key scope allow-list is centralized."""
-        assert frozenset({"activities:upload"}) == auth_api_keys_utils.SUPPORTED_API_KEY_SCOPES
+        assert frozenset({"activities:upload", "workbench:read"}) == auth_api_keys_utils.SUPPORTED_API_KEY_SCOPES
 
     def test_validate_regular_user_with_valid_regular_scope(self):
         """Test that a regular user can request activities:upload."""
