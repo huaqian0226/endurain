@@ -21,8 +21,8 @@ def _build_app(mock_db):
     def _uid():
         return 1
 
-    app.dependency_overrides[auth_deps.check_scopes] = _mock
-    app.dependency_overrides[auth_deps.get_sub_from_access_token] = _uid
+    app.dependency_overrides[auth_deps.check_auth_scopes] = _mock
+    app.dependency_overrides[auth_deps.get_user_id_from_auth] = _uid
     app.dependency_overrides[core_deps.validate_pagination_values] = _mock
     app.dependency_overrides[notif_deps.validate_notification_id] = _mock
     app.dependency_overrides[core_db.get_db] = lambda: mock_db

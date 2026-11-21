@@ -43,8 +43,8 @@ router = APIRouter()
     response_model=activity_schema.ActivityPage,
 )
 def list_own_activities(
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:read"])],
-    token_user_id: Annotated[int, Depends(auth_dependencies.get_sub_from_access_token)],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:read"])],
+    token_user_id: Annotated[int, Depends(auth_dependencies.get_user_id_from_auth)],
     db: Annotated[Session, Depends(core_database.get_db)],
     page: Annotated[core_pagination.PageParams, Depends(core_pagination.list_page_params)],
     activity_type: activity_dependencies.ActivityTypeFilter = None,
@@ -75,8 +75,8 @@ def list_own_activities(
     response_model=dict[int, str],
 )
 def list_activity_types(
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:read"])],
-    token_user_id: Annotated[int, Depends(auth_dependencies.get_sub_from_access_token)],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:read"])],
+    token_user_id: Annotated[int, Depends(auth_dependencies.get_user_id_from_auth)],
     db: Annotated[Session, Depends(core_database.get_db)],
 ) -> dict[int, str]:
     """Return the distinct activity types the user has recorded, keyed by type code."""
@@ -88,8 +88,8 @@ def list_activity_types(
     response_model=activity_schema.ActivityFeedPage,
 )
 def list_following_feed(
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:read"])],
-    token_user_id: Annotated[int, Depends(auth_dependencies.get_sub_from_access_token)],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:read"])],
+    token_user_id: Annotated[int, Depends(auth_dependencies.get_user_id_from_auth)],
     db: Annotated[Session, Depends(core_database.get_db)],
     cursor: Annotated[str | None, Query()] = None,
     num_records: Annotated[int | None, Query(ge=1, le=core_pagination.MAX_NUM_RECORDS)] = None,
@@ -109,8 +109,8 @@ def list_following_feed(
 )
 def list_gear_activities(
     gear_id: core_dependencies.PositiveId,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:read"])],
-    token_user_id: Annotated[int, Depends(auth_dependencies.get_sub_from_access_token)],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:read"])],
+    token_user_id: Annotated[int, Depends(auth_dependencies.get_user_id_from_auth)],
     db: Annotated[Session, Depends(core_database.get_db)],
     page: Annotated[core_pagination.PageParams, Depends(core_pagination.list_page_params)],
 ) -> activity_schema.ActivityPage:
@@ -130,8 +130,8 @@ def list_gear_activities(
 )
 def read_user_activity_stats(
     user_id: core_dependencies.PositiveId,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:read"])],
-    token_user_id: Annotated[int, Depends(auth_dependencies.get_sub_from_access_token)],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:read"])],
+    token_user_id: Annotated[int, Depends(auth_dependencies.get_user_id_from_auth)],
     db: Annotated[Session, Depends(core_database.get_db)],
     period: Annotated[str, Query(pattern="^(week|month)$")] = "week",
     anchor_date: Annotated[
@@ -155,8 +155,8 @@ def read_user_activity_stats(
 )
 def list_user_activities(
     user_id: core_dependencies.PositiveId,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:read"])],
-    token_user_id: Annotated[int, Depends(auth_dependencies.get_sub_from_access_token)],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:read"])],
+    token_user_id: Annotated[int, Depends(auth_dependencies.get_user_id_from_auth)],
     db: Annotated[Session, Depends(core_database.get_db)],
     page: Annotated[core_pagination.PageParams, Depends(core_pagination.list_page_params)],
     activity_type: activity_dependencies.ActivityTypeFilter = None,
@@ -192,9 +192,9 @@ def edit_activities(
     body: activity_schema.ActivitiesBulkEdit,
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:write"])],
     db: Annotated[
         Session,
         Depends(core_database.get_db),
@@ -223,10 +223,10 @@ def edit_activities(
 )
 def read_activity(
     activity_id: activity_dependencies.ActivityId,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:read"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -251,10 +251,10 @@ def edit_activity(
     request: Request,
     activity_id: activity_dependencies.ActivityId,
     activity_attributes: activity_schema.ActivityEdit,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:write"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -287,10 +287,10 @@ def edit_activity(
 def delete_activity(
     request: Request,
     activity_id: activity_dependencies.ActivityId,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:write"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,

@@ -36,14 +36,14 @@ async def read_gears_user_all_pagination(
     _check_scopes: Annotated[
         Callable,
         Security(
-            auth_dependencies.check_scopes,
+            auth_dependencies.check_auth_scopes,
             scopes=["gears:read"],
         ),
     ],
     token_user_id: Annotated[
         int,
         Depends(
-            auth_dependencies.get_sub_from_access_token,
+            auth_dependencies.get_user_id_from_auth,
         ),
     ],
     db: Annotated[
@@ -122,14 +122,14 @@ async def read_gear_id(
     _check_scopes: Annotated[
         Callable,
         Security(
-            auth_dependencies.check_scopes,
+            auth_dependencies.check_auth_scopes,
             scopes=["gears:read"],
         ),
     ],
     token_user_id: Annotated[
         int,
         Depends(
-            auth_dependencies.get_sub_from_access_token,
+            auth_dependencies.get_user_id_from_auth,
         ),
     ],
     db: Annotated[
@@ -196,14 +196,14 @@ async def read_gear_user_contains_nickname(
     _check_scopes: Annotated[
         Callable,
         Security(
-            auth_dependencies.check_scopes,
+            auth_dependencies.check_auth_scopes,
             scopes=["gears:read"],
         ),
     ],
     token_user_id: Annotated[
         int,
         Depends(
-            auth_dependencies.get_sub_from_access_token,
+            auth_dependencies.get_user_id_from_auth,
         ),
     ],
     db: Annotated[
@@ -243,14 +243,14 @@ async def read_gear_user_by_nickname(
     _check_scopes: Annotated[
         Callable,
         Security(
-            auth_dependencies.check_scopes,
+            auth_dependencies.check_auth_scopes,
             scopes=["gears:read"],
         ),
     ],
     token_user_id: Annotated[
         int,
         Depends(
-            auth_dependencies.get_sub_from_access_token,
+            auth_dependencies.get_user_id_from_auth,
         ),
     ],
     db: Annotated[
@@ -296,14 +296,14 @@ async def read_gear_user_by_type(
     _check_scopes: Annotated[
         Callable,
         Security(
-            auth_dependencies.check_scopes,
+            auth_dependencies.check_auth_scopes,
             scopes=["gears:read"],
         ),
     ],
     token_user_id: Annotated[
         int,
         Depends(
-            auth_dependencies.get_sub_from_access_token,
+            auth_dependencies.get_user_id_from_auth,
         ),
     ],
     db: Annotated[
@@ -345,14 +345,14 @@ async def create_gear(
     _check_scopes: Annotated[
         Callable,
         Security(
-            auth_dependencies.check_scopes,
+            auth_dependencies.check_auth_scopes,
             scopes=["gears:write"],
         ),
     ],
     token_user_id: Annotated[
         int,
         Depends(
-            auth_dependencies.get_sub_from_access_token,
+            auth_dependencies.get_user_id_from_auth,
         ),
     ],
     db: Annotated[
@@ -393,14 +393,14 @@ async def edit_gear(
     _check_scopes: Annotated[
         Callable,
         Security(
-            auth_dependencies.check_scopes,
+            auth_dependencies.check_auth_scopes,
             scopes=["gears:write"],
         ),
     ],
     token_user_id: Annotated[
         int,
         Depends(
-            auth_dependencies.get_sub_from_access_token,
+            auth_dependencies.get_user_id_from_auth,
         ),
     ],
     db: Annotated[
@@ -446,14 +446,14 @@ async def delete_gear(
     _check_scopes: Annotated[
         Callable,
         Security(
-            auth_dependencies.check_scopes,
+            auth_dependencies.check_auth_scopes,
             scopes=["gears:write"],
         ),
     ],
     token_user_id: Annotated[
         int,
         Depends(
-            auth_dependencies.get_sub_from_access_token,
+            auth_dependencies.get_user_id_from_auth,
         ),
     ],
     db: Annotated[

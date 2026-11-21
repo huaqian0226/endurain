@@ -6,11 +6,11 @@ Endurain supports integration with other apps through a comprehensive OAuth 2.1 
 
 - **Client Type Header:** Most protected JWT requests must include an `X-Client-Type` header with either `web` or `mobile` as the value. Authentication, public, browser-redirect, API-key, and activity-upload unified-auth flows follow the endpoint-specific requirements below.
 - **OAuth/PKCE Client Type Binding:** For `/public/idp/login/{idp_slug}` and password PKCE login, the backend records a `client_type` on the PKCE/OAuth state. During `/public/idp/session/{session_id}/tokens`, that stored value controls the response shape. The token-exchange `X-Client-Type` header is optional, but if provided it must match the stored value; otherwise the exchange returns `400` with `client_type does not match the OAuth state`.
-- **Authorization:** Most protected JWT requests must include an `Authorization: Bearer <access token>` header with a valid access token. Login, MFA verification, OAuth initiation/callback/token exchange, password reset, sign-up, and activity uploads authenticated with an API key are exceptions.
+- **Authorization:** Most protected JWT requests must include an `Authorization: Bearer <access token>` header with a valid access token. Login, MFA verification, OAuth initiation/callback/token exchange, password reset, sign-up, and supported API-key-authenticated endpoints are exceptions.
 - **CSRF Protection (Web Only):** State-changing protected web requests (`POST`, `PUT`, `DELETE`, `PATCH`) must include an `X-CSRF-Token` header. This custom header requirement prevents simple cross-site form submissions and is combined with short-lived in-memory access tokens, `SameSite=Strict` refresh cookies, and CORS controls. `/auth/refresh` supports a bootstrap refresh without this header after page reload; if the header is provided and the session has a stored CSRF binding, the token value must be valid.
 
 !!! note "API Key Authentication"
-    Certain endpoints support API key authentication as an alternative to Bearer + `X-Client-Type` headers. API key requests do not require the `X-Client-Type` header or a CSRF token. See [API Key Authentication](api-keys.md) for details.
+    Activity upload, owner-scoped activity operations, gear and gear-component operations, health records, follower relationships, notification HTTP operations, selected user reads, and workbench projections support API key authentication when the key has the endpoint's required scope. API key requests do not require the `X-Client-Type` header or a CSRF token. API key management and profile/account-security operations stay JWT-only because they can create credentials or change account security; `users:write`, sessions, server settings, and identity-provider configuration stay JWT-only because they administer accounts or authentication. Ingestion refresh and bulk-import and routes requiring a session ID need a live JWT session. `health_targets:*` scopes are not grantable because no route checks them, and vehicle mapping writes use `gears:write` rather than a separate `workbench:write` scope. See [API Key Authentication](api-keys.md) for the exact scope-to-endpoint groups.
 
 ## Token Handling
 
@@ -142,7 +142,7 @@ For integrations that do not maintain a JWT session, API keys provide a stateles
 
 1. Generate an API key via the web UI (Settings → Security → API Keys) or the management API (requires JWT)
 2. Store the raw key securely — it is shown only once at creation time
-3. Include the key in requests to supported endpoints via the `X-API-Key` header, or via the `?api_key=` query parameter only when `ALLOW_API_KEY_QUERY_PARAM=true` is explicitly enabled
+3. Grant only the required supported scopes and include the key on matching endpoints via the `X-API-Key` header, or via the `?api_key=` query parameter only when `ALLOW_API_KEY_QUERY_PARAM=true` is explicitly enabled
 4. The backend validates the key hash, checks revocation and expiry, and resolves the user identity and scopes
 5. The endpoint processes the request if the required scope is present in the key's grant
 
@@ -198,6 +198,6 @@ Require JWT authentication with the standard `X-Client-Type` requirement; state-
 
 | What | Url | Expected Information |
 | ---- | --- | -------------------- |
-| **Activity Upload** | `/activities/create/upload` | .gpx, .tcx, .gz or .fit file. Accepts JWT **or** API key (`X-API-Key` header, or `?api_key=` query param only when `ALLOW_API_KEY_QUERY_PARAM=true`) with `activities:upload` scope. This unified-auth endpoint does not require `X-Client-Type` |
+| **Activity Upload** | `/activities/upload` | .gpx, .tcx, .gz or .fit file. Accepts JWT **or** API key (`X-API-Key` header, or `?api_key=` query param only when `ALLOW_API_KEY_QUERY_PARAM=true`) with `activities:upload` scope. This unified-auth endpoint does not require `X-Client-Type` |
 | **Set Weight** | `/health/weight` | JSON `{'weight': <number>, 'created_at': 'yyyy-MM-dd'}` |
 

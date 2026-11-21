@@ -85,7 +85,7 @@ const yearRange = computed(() => {
           LinkedIn
         </a>
         <span aria-hidden="true">•</span>
-        <span>v0.20.2</span>
+        <span>v0.20.2-workbench.2</span>
       </p>
 
       <p

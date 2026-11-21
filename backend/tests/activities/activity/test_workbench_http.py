@@ -63,9 +63,9 @@ def client():
     app.include_router(router.router, prefix="/workbench")
     app.dependency_overrides[database.get_db] = lambda: db
     app.dependency_overrides[auth.get_user_id_from_auth] = lambda: 1
-    app.dependency_overrides[auth.get_sub_from_access_token] = lambda: 1
+    app.dependency_overrides[auth.get_user_id_from_auth] = lambda: 1
     app.dependency_overrides[auth.check_auth_scopes] = lambda: None
-    app.dependency_overrides[auth.check_scopes] = lambda: None
+    app.dependency_overrides[auth.check_auth_scopes] = lambda: None
     with TestClient(app) as http:
         yield http
     db.close()
@@ -86,9 +86,9 @@ def test_existing_vehicle_mapping_preserves_price_and_excludes_renamed_demo(clie
     assert client.get(f"/workbench/vehicle-mappings/{VEHICLE}").json() == mapped.json()
     import modules.auth.dependencies as auth
 
-    client.app.dependency_overrides[auth.get_sub_from_access_token] = lambda: 2
+    client.app.dependency_overrides[auth.get_user_id_from_auth] = lambda: 2
     assert client.get(f"/workbench/vehicle-mappings/{VEHICLE}").status_code == 404
-    client.app.dependency_overrides[auth.get_sub_from_access_token] = lambda: 1
+    client.app.dependency_overrides[auth.get_user_id_from_auth] = lambda: 1
 
     body = response.json()
     assert body["gear"]["purchase_value"] == 321.5
@@ -146,8 +146,8 @@ def test_read_key_is_scoped_and_cannot_write_or_read_other_owners(client):
             )
         )
     db.commit()
-    for dep in [auth.check_auth_scopes, auth.get_user_id_from_auth, auth.check_scopes, auth.get_sub_from_access_token]:
-        client.app.dependency_overrides.pop(dep)
+    for dep in [auth.check_auth_scopes, auth.get_user_id_from_auth]:
+        client.app.dependency_overrides.pop(dep, None)
     path = f"/workbench/vehicles/{VEHICLE}"
     assert client.get(path, headers={"X-API-Key": "endurain_test_read"}).status_code == 200
     assert client.get(path, headers={"X-API-Key": "endurain_test_upload"}).status_code == 403
@@ -159,7 +159,7 @@ def test_read_key_is_scoped_and_cannot_write_or_read_other_owners(client):
             headers={"X-API-Key": "endurain_test_read", "X-Client-Type": "web"},
             json={"instance_id": "synthetic-instance", "gear_id": 1},
         ).status_code
-        == 401
+        == 403
     )
 
 

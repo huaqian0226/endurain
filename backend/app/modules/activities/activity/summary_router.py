@@ -27,8 +27,8 @@ router = APIRouter()
     response_model=activity_summary_schema.SummaryResponse,
 )
 def read_activity_summary(
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:read"])],
-    token_user_id: Annotated[int, Depends(auth_dependencies.get_sub_from_access_token)],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:read"])],
+    token_user_id: Annotated[int, Depends(auth_dependencies.get_user_id_from_auth)],
     db: Annotated[Session, Depends(core_database.get_db)],
     period: Annotated[str, Query(pattern="^(week|month|year|lifetime)$")] = "week",
     anchor_date: Annotated[

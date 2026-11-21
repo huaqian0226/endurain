@@ -35,7 +35,7 @@ def validate_gear_component_type(
     gear_component: (gc_schema.GearComponentCreate),
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,

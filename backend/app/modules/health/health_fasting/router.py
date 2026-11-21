@@ -29,13 +29,13 @@ router = APIRouter()
     status_code=status.HTTP_200_OK,
 )
 def read_health_fasting_all_pagination(
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["health:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["health:read"])],
     _validate_pagination_values_on_query: Annotated[
         Callable, Depends(core_dependencies.validate_pagination_values_on_query)
     ],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -101,10 +101,10 @@ def read_health_fasting_all_pagination(
     status_code=status.HTTP_200_OK,
 )
 def read_active_fasting(
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["health:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["health:read"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -131,10 +131,10 @@ def read_active_fasting(
     status_code=status.HTTP_200_OK,
 )
 def read_fasting_stats(
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["health:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["health:read"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -180,10 +180,10 @@ def read_fasting_stats(
 )
 def read_health_fasting_by_id(
     health_fasting_id: int,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["health:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["health:read"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -223,10 +223,10 @@ def read_health_fasting_by_id(
 )
 def create_health_fasting(
     health_fasting: health_fasting_schema.HealthFastingCreate,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["health:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["health:write"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -267,10 +267,10 @@ def create_health_fasting(
 )
 def edit_health_fasting(
     health_fasting: health_fasting_schema.HealthFastingUpdate,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["health:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["health:write"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -300,10 +300,10 @@ def edit_health_fasting(
 def complete_health_fasting(
     health_fasting_id: int,
     complete_data: health_fasting_schema.HealthFastingComplete,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["health:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["health:write"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -333,10 +333,10 @@ def complete_health_fasting(
 )
 def delete_health_fasting(
     health_fasting_id: int,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["health:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["health:write"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,

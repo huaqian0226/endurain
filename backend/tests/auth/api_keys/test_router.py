@@ -193,6 +193,29 @@ class TestCreateUserApiKey:
         # Assert
         assert response.status_code == 422
 
+    def test_create_user_api_key_rejects_explicitly_excluded_scopes(self, fast_api_client, fast_api_app):
+        """Excluded JWT-only and unenforced scopes cannot be granted at key creation."""
+        excluded_scopes = [
+            "profile",
+            "users:write",
+            "sessions:read",
+            "sessions:write",
+            "server_settings:read",
+            "server_settings:write",
+            "identity_providers:read",
+            "identity_providers:write",
+            "health_targets:read",
+            "health_targets:write",
+            "workbench:write",
+        ]
+        for scope in excluded_scopes:
+            response = fast_api_client.post(
+                "/api_keys",
+                json={"name": "Excluded scope", "scopes": [scope]},
+                headers={"Authorization": "Bearer mock_token"},
+            )
+            assert response.status_code == 422, f"{scope}: {response.status_code} {response.text}"
+
     def test_create_user_api_key_empty_name_returns_422(self, fast_api_client, fast_api_app):
         """Test that 422 is returned when the name is empty (min_length violation)."""
         payload = {

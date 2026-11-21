@@ -19,10 +19,10 @@ router = APIRouter()
     status_code=status.HTTP_200_OK,
 )
 def read_health_targets_all(
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["health:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["health:read"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -63,10 +63,10 @@ def read_health_targets_all(
 )
 def update_health_targets(
     health_targets: health_targets_schema.HealthTargetsUpdate,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["health:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["health:write"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,

@@ -69,6 +69,8 @@ Endurain uses OAuth-style scopes to control API access. Each scope controls acce
 ### Scope Usage
 Scopes are automatically assigned based on user permissions and are embedded in JWT tokens. API endpoints validate required scopes before processing requests.
 
+API keys use an explicit grant allow-list: `activities:read`, `activities:write`, `activities:upload`, `workbench:read`, `gears:read`, `gears:write`, `health:read`, `health:write`, `followers:read`, `followers:write`, `notifications:read`, `notifications:write`, and `users:read`. Keys work on matching activity, gear, gear-component, health, follower, notification HTTP, selected user-read, and workbench routes. API-key management and profile routes stay JWT-only because they can change account security or credentials; `users:write`, `sessions:*`, `server_settings:*`, and `identity_providers:*` stay JWT-only because they administer accounts or authentication configuration. Ingestion refresh and bulk-import, plus any route requiring a session ID, need a live JWT session. `health_targets:*` has no matching scope guard in this fork, and workbench mapping writes use `gears:write` rather than a separate `workbench:write` grant. See [API key authentication](api-keys.md) for route details.
+
 ## Error responses
 
 All errors, including authentication and authorization failures, use one problem-document shape. See [Errors, concurrency and rate limits](errors-and-limits.md).
@@ -122,7 +124,7 @@ All errors, including authentication and authorization failures, use one problem
 
 1. **Store the key securely** — use a secrets manager, environment variable, or encrypted config file. Never hardcode it in source code
 2. **Use the `X-API-Key` header** rather than the `?api_key=` query parameter to avoid key exposure in logs. The query parameter is disabled by default and must be explicitly enabled with `ALLOW_API_KEY_QUERY_PARAM=true`
-3. **Grant only supported scopes** — API keys currently accept only `activities:upload`
+3. **Grant only the scopes required** — API keys support a limited allow-list for activity, workbench, gear, health, follower, notification, and user reads. Account security, administrative configuration, session-bound routes, ingestion refresh, and bulk-import remain JWT-only.
 4. **Set an expiry date** when creating keys for temporary or one-off integrations
 5. **Rotate keys periodically** — delete the old key and create a new one; update any dependent services before deleting
 6. **Revoke immediately** if a key is suspected to be compromised — revocation takes effect instantly

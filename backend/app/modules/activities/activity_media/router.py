@@ -31,10 +31,10 @@ router = APIRouter()
 )
 def list_activity_media(
     activity_id: activity_dependencies.ActivityId,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:read"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -64,11 +64,11 @@ def create_activity_media(
     activity_id: activity_dependencies.ActivityId,
     _check_scopes: Annotated[
         Callable,
-        Security(auth_dependencies.check_scopes, scopes=["activities:write"]),
+        Security(auth_dependencies.check_auth_scopes, scopes=["activities:write"]),
     ],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -110,10 +110,10 @@ def delete_activity_media(
     request: Request,
     activity_id: activity_dependencies.ActivityId,
     media_id: core_dependencies.PositiveId,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:write"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,

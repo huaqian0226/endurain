@@ -21,9 +21,27 @@ The raw key is shown **once** at creation time and is never stored by the server
 
 ## Scopes
 
-API keys are granted one or more API-key scopes at creation time. Currently only `activities:upload` is accepted; JWT-only scopes such as `profile`, `activities:read`, or `users:write` cannot be granted to API keys.
+API keys are granted one or more API-key scopes at creation time. The supported grants are:
 
-The key-management API rejects any requested scope outside the API-key allow-list. This keeps long-lived API keys limited to the endpoint that currently supports API-key authentication.
+| Scope | Access |
+| ----- | ------ |
+| `activities:read` | Owner-visible activity reads, including lists, details, summaries, exercise titles, streams, laps, sets, workout steps, media lists, and workbench equipment candidates |
+| `activities:write` | Activity edits/deletes and activity media upload/deletion |
+| `activities:upload` | Activity file upload |
+| `workbench:read` | Workbench projections and asset usage reads |
+| `gears:read` | Gear and gear-component reads, plus workbench vehicle-mapping reads |
+| `gears:write` | Gear and gear-component changes, plus workbench vehicle mapping writes |
+| `health:read` | Health, sleep, weight, steps, fasting, bowel, targets, and water reads |
+| `health:write` | Health, sleep, weight, steps, fasting, bowel, targets, and water changes |
+| `followers:read` | Follower relationships and follow-request reads |
+| `followers:write` | Follow, accept, reject, and remove relationship actions |
+| `notifications:read` | Notification HTTP reads |
+| `notifications:write` | Mark notification(s) as read |
+| `users:read` | User directory and identity-provider-link reads guarded by `users:read` |
+
+The key-management API rejects any requested scope outside this explicit allow-list. JWT-only grants are excluded: `profile` protects account security and key management; `users:write`, `sessions:*`, `server_settings:*`, and `identity_providers:*` are administrative or authentication-configuration permissions. `health_targets:*` is not used by this fork's routes (targets use `health:*`), and `workbench:write` does not exist (mapping writes use `gears:write`).
+
+API keys cannot call ingestion `refresh` or `bulk-import`, which remain JWT-only. Routes that require a session ID also remain JWT-only. This includes profile operations such as default-gear and goals management, and account export/import operations.
 
 <!-- generated:api-key-scopes -->
 
@@ -34,7 +52,7 @@ API keys bypass the standard JWT and `X-Client-Type` requirements. Send the raw 
 **Option 1: `X-API-Key` header (recommended):**
 
 ```http
-POST /api/v1/activities/create/upload
+POST /api/v1/activities/upload
 X-API-Key: endurain_abc12345...
 Content-Type: multipart/form-data
 
@@ -44,7 +62,7 @@ Content-Type: multipart/form-data
 **Option 2: `api_key` query parameter (for tools that cannot set custom headers):**
 
 ```http
-POST /api/v1/activities/create/upload?api_key=endurain_abc12345...
+POST /api/v1/activities/upload?api_key=endurain_abc12345...
 Content-Type: multipart/form-data
 
 (file body)
@@ -61,7 +79,17 @@ If both the `X-API-Key` header and the `?api_key=` query parameter are present, 
 
 | Method | Endpoint | Required Scope | Description |
 | ------ | -------- | -------------- | ----------- |
-| `POST` | `/activities/create/upload` | `activities:upload` | Upload a .gpx, .tcx, .fit, or .gz activity file |
+| `POST` | `/activities/upload` | `activities:upload` | Upload a .gpx, .tcx, .fit, or .gz activity file |
+| `GET` | `/activities/ingestion-jobs/{job_id}` | `activities:upload` | Read the status of an API-key activity upload |
+| `GET` | `/activities`, `/activities/{id}`, and activity subresources | `activities:read` | Owner-visible activity reads, including summaries, exercise titles, streams, laps, sets, workout steps, media lists, and equipment candidates |
+| `PATCH`, `DELETE` | `/activities`, `/activities/{id}`, and activity media routes | `activities:write` | Bulk-edit, edit, or delete owned activities and manage activity media |
+| `GET`, `POST`, `PUT`, `DELETE` | `/gears`, `/gear_components` | `gears:read`, `gears:write` | Read or change gears and components |
+| `GET`, `POST`, `PUT`, `DELETE` | `/health` and its sleep, weight, steps, fasting, poop, targets, and water subroutes | `health:read`, `health:write` | Read or change the owner's health records and targets |
+| `GET`, `POST`, `PATCH`, `DELETE` | `/followers` | `followers:read`, `followers:write` | Read and change follower relationships and requests |
+| `GET`, `PUT` | `/notifications` | `notifications:read`, `notifications:write` | Read notifications or mark them as read (HTTP endpoints only; no websocket) |
+| `GET` | `/users` | `users:read` | Read user directory entries and identity-provider links |
+| `GET`, `PUT` | `/workbench/vehicles` and `/workbench/vehicle-mappings` | `gears:read`, `gears:write` | Read or write vehicle mappings |
+| `GET` | `/workbench` asset and equipment projections | `workbench:read`, `activities:read` | Read workbench projections, asset usage, and equipment candidates |
 
 The upload endpoint also accepts JWT authentication through the same unified-auth dependency. JWT upload requests still require `Authorization: Bearer <access token>` and the `activities:upload` scope, but this endpoint does not require `X-Client-Type`.
 
@@ -86,7 +114,7 @@ Content-Type: application/json
 
 {
   "name": "Home Server Integration",
-  "scopes": ["activities:upload"],
+  "scopes": ["activities:read", "activities:upload"],
   "expires_at": "2027-01-01T00:00:00Z",
   "current_password": "current-password",
   "mfa_code": "123456"
@@ -96,7 +124,7 @@ Content-Type: application/json
 | Field | Required | Description |
 | ----- | -------- | ----------- |
 | `name` | Yes | Human-readable label (max 100 characters) |
-| `scopes` | Yes | Array of API-key scopes to grant. Currently only `activities:upload` is accepted |
+| `scopes` | Yes | Array of supported API-key scopes to grant; see the table above |
 | `expires_at` | No | ISO 8601 expiry datetime. Omit or `null` for no expiry |
 | `current_password` | Conditionally | Required for accounts with a local password. Omit for SSO-only accounts |
 | `mfa_code` | Conditionally | Required when MFA is enabled on the account |

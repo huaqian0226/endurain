@@ -25,6 +25,7 @@ def auth_app(mock_db):
 
     app.include_router(router, prefix="/users")
 
+    app.dependency_overrides[auth_dependencies.check_auth_scopes] = lambda: None
     app.dependency_overrides[auth_dependencies.check_scopes] = lambda: None
     app.dependency_overrides[core_database.get_db] = lambda: mock_db
 

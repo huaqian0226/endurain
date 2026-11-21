@@ -26,13 +26,13 @@ def list_activity_streams(
     _check_scopes: Annotated[
         Callable,
         Security(
-            auth_dependencies.check_scopes,
+            auth_dependencies.check_auth_scopes,
             scopes=["activities:read"],
         ),
     ],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -60,13 +60,13 @@ def read_activity_stream(
     _check_scopes: Annotated[
         Callable,
         Security(
-            auth_dependencies.check_scopes,
+            auth_dependencies.check_auth_scopes,
             scopes=["activities:read"],
         ),
     ],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,

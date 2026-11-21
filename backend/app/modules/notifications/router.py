@@ -22,10 +22,10 @@ router = APIRouter()
     status_code=status.HTTP_200_OK,
 )
 def read_notifications_number(
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["notifications:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["notifications:read"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -58,10 +58,10 @@ def read_notifications_by_id(
         Callable,
         Depends(notifications_dependencies.validate_notification_id),
     ],
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["notifications:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["notifications:read"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -97,10 +97,10 @@ def read_notifications_user_pagination(
         Callable,
         Depends(core_dependencies.validate_pagination_values),
     ],
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["notifications:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["notifications:read"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -141,10 +141,10 @@ def mark_notification_as_read(
         Callable,
         Depends(notifications_dependencies.validate_notification_id),
     ],
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["notifications:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["notifications:write"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -174,10 +174,10 @@ def mark_notification_as_read(
     status_code=status.HTTP_204_NO_CONTENT,
 )
 def mark_all_notifications_as_read(
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["notifications:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["notifications:write"])],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,

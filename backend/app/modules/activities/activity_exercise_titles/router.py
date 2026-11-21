@@ -21,7 +21,7 @@ router = APIRouter()
 def list_activity_exercise_titles(
     _check_scopes: Annotated[
         Callable,
-        Security(auth_dependencies.check_scopes, scopes=["activities:read"]),
+        Security(auth_dependencies.check_auth_scopes, scopes=["activities:read"]),
     ],
     db: Annotated[Session, Depends(core_database.get_db)],
 ) -> list[activity_exercise_titles_schema.ActivityExerciseTitlesRead]:

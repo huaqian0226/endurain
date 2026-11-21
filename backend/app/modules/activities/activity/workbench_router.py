@@ -1,4 +1,4 @@
-"""Authenticated workbench HTTP surface; service keys are strictly read-only."""
+"""Authenticated workbench HTTP surface with route-specific scopes."""
 
 from collections.abc import Callable
 from typing import Annotated
@@ -34,8 +34,8 @@ def map_vehicle(
     request: Request,
     vehicle_uuid: UUID,
     body: schema.VehicleMappingEdit,
-    _scope: Annotated[Callable, Security(auth.check_scopes, scopes=["gears:write"])],
-    user_id: Annotated[int, Depends(auth.get_sub_from_access_token)],
+    _scope: Annotated[Callable, Security(auth.check_auth_scopes, scopes=["gears:write"])],
+    user_id: Annotated[int, Depends(auth.get_user_id_from_auth)],
     db: Annotated[Session, Depends(database.get_db)],
 ) -> schema.VehicleMappingRead:
     """Explicitly map an existing owned gear without modifying its fields."""
@@ -55,8 +55,8 @@ def read_asset(
 
 @router.get("/equipment-candidates", response_model=schema.EquipmentCandidatesRead)
 def equipment_candidates(
-    _scope: Annotated[Callable, Security(auth.check_scopes, scopes=["activities:read"])],
-    user_id: Annotated[int, Depends(auth.get_sub_from_access_token)],
+    _scope: Annotated[Callable, Security(auth.check_auth_scopes, scopes=["activities:read"])],
+    user_id: Annotated[int, Depends(auth.get_user_id_from_auth)],
     catalogue: Annotated[Callable[[int], dict], Depends(core_dependencies.get_household_catalogue)],
 ) -> schema.EquipmentCandidatesRead:
     """Read the explicitly authorized household catalogue for the activity editor."""
@@ -66,9 +66,9 @@ def equipment_candidates(
 @router.get("/vehicle-mappings/{vehicle_uuid}", response_model=schema.VehicleMappingRead)
 def read_mapping(
     vehicle_uuid: UUID,
-    _scope: Annotated[Callable, Security(auth.check_scopes, scopes=["gears:read"])],
-    user_id: Annotated[int, Depends(auth.get_sub_from_access_token)],
+    _scope: Annotated[Callable, Security(auth.check_auth_scopes, scopes=["gears:read"])],
+    user_id: Annotated[int, Depends(auth.get_user_id_from_auth)],
     db: Annotated[Session, Depends(database.get_db)],
 ) -> schema.VehicleMappingRead:
-    """Read an editable mapping revision through an owner JWT session."""
+    """Read an editable mapping revision owned by the authenticated principal."""
     return service.read_mapping(user_id, str(vehicle_uuid), db)

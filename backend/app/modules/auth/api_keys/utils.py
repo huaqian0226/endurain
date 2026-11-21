@@ -5,7 +5,23 @@ import secrets
 
 import modules.auth.token_hashing as token_hashing
 
-SUPPORTED_API_KEY_SCOPES = frozenset({"activities:upload", "workbench:read"})
+SUPPORTED_API_KEY_SCOPES = frozenset(
+    {
+        "activities:read",
+        "activities:write",
+        "activities:upload",
+        "workbench:read",
+        "gears:read",
+        "gears:write",
+        "health:read",
+        "health:write",
+        "followers:read",
+        "followers:write",
+        "notifications:read",
+        "notifications:write",
+        "users:read",
+    }
+)
 
 
 def generate_api_key() -> str:
@@ -56,8 +72,7 @@ def validate_api_key_scopes(
         requested_scopes: List of scopes the caller wants
             to assign to the new API key.
         _user_access_type: The owner's access type. Accepted for
-            router compatibility but not used while API-key scopes
-            are restricted to activity uploads.
+            router compatibility but not used while API-key scopes are explicitly allow-listed.
 
     Raises:
         ValueError: If any requested scope is not supported.

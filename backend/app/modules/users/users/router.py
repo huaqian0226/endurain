@@ -31,7 +31,7 @@ def read_users_all_pagination(
     _validate_pagination_values_on_query: Annotated[
         Callable, Depends(core_dependencies.validate_pagination_values_on_query)
     ],
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["users:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["users:read"])],
     db: Annotated[
         Session,
         Depends(core_database.get_db),
@@ -137,7 +137,7 @@ def read_users_all_pagination(
 )
 def read_users_contain_username(
     username: str,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["users:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["users:read"])],
     db: Annotated[
         Session,
         Depends(core_database.get_db),
@@ -164,7 +164,7 @@ def read_users_contain_username(
 )
 def read_users_username(
     username: str,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["users:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["users:read"])],
     db: Annotated[
         Session,
         Depends(core_database.get_db),
@@ -191,7 +191,7 @@ def read_users_username(
 )
 def read_users_email(
     email: str,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["users:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["users:read"])],
     db: Annotated[
         Session,
         Depends(core_database.get_db),
@@ -219,7 +219,7 @@ def read_users_email(
 def read_users_id(
     user_id: int,
     _validate_id: Annotated[Callable, Depends(users_dependencies.validate_user_id)],
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["users:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["users:read"])],
     db: Annotated[
         Session,
         Depends(core_database.get_db),
@@ -478,7 +478,7 @@ async def delete_user(
 def get_user_identity_providers(
     user_id: int,
     _validate_id: Annotated[Callable, Depends(users_dependencies.validate_user_id)],
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["users:read"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["users:read"])],
     identity_service: Annotated[
         auth_identity_service.IdentityService,
         Depends(auth_identity_service.get_identity_service),

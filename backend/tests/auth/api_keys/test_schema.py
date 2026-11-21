@@ -84,11 +84,11 @@ class TestUsersApiKeyCreate:
         assert "Unsupported API key scopes" in str(exc_info.value)
 
     def test_create_multiple_scopes_with_unsupported_fails(self):
-        """Test that only activities:upload is accepted for API keys."""
+        """Test that excluded grants remain invalid in a multi-scope request."""
         with pytest.raises(ValidationError) as exc_info:
             users_api_keys_schema.UsersApiKeyCreate(
                 name="Multi-scope Key",
-                scopes=["activities:read", "activities:upload", "gears:read"],
+                scopes=["activities:read", "activities:upload", "users:write"],
             )
         assert "Unsupported API key scopes" in str(exc_info.value)
 

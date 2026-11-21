@@ -73,8 +73,27 @@ class TestValidateApiKeyScopes:
     """
 
     def test_supported_api_key_scopes_constant(self):
-        """Test that the API-key scope allow-list is centralized."""
-        assert frozenset({"activities:upload", "workbench:read"}) == auth_api_keys_utils.SUPPORTED_API_KEY_SCOPES
+        """Test the exact API-key scope set accepted by the public API."""
+        assert (
+            frozenset(
+                {
+                    "activities:read",
+                    "activities:write",
+                    "activities:upload",
+                    "workbench:read",
+                    "gears:read",
+                    "gears:write",
+                    "health:read",
+                    "health:write",
+                    "followers:read",
+                    "followers:write",
+                    "notifications:read",
+                    "notifications:write",
+                    "users:read",
+                }
+            )
+            == auth_api_keys_utils.SUPPORTED_API_KEY_SCOPES
+        )
 
     def test_validate_regular_user_with_valid_regular_scope(self):
         """Test that a regular user can request activities:upload."""
@@ -104,8 +123,8 @@ class TestValidateApiKeyScopes:
         auth_api_keys_utils.validate_api_key_scopes(["activities:upload"], "regular")
 
     def test_validate_multiple_valid_regular_scopes(self):
-        """Test that extra JWT scopes are rejected."""
-        scopes = ["activities:upload", "activities:read"]
+        """Test that scopes outside the explicit API-key allow-list are rejected."""
+        scopes = ["activities:upload", "users:write"]
         with pytest.raises(ValueError, match="Unsupported API key scopes"):
             auth_api_keys_utils.validate_api_key_scopes(scopes, "regular")
 

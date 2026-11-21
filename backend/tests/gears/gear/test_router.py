@@ -20,8 +20,8 @@ def _build_app(mock_db):
     def _uid():
         return 1
 
-    app.dependency_overrides[auth_deps.check_scopes] = _mock
-    app.dependency_overrides[auth_deps.get_sub_from_access_token] = _uid
+    app.dependency_overrides[auth_deps.check_auth_scopes] = _mock
+    app.dependency_overrides[auth_deps.get_user_id_from_auth] = _uid
     app.dependency_overrides[core_deps.validate_pagination_values_on_query] = _mock
     app.dependency_overrides[gear_deps.validate_gear_id] = _mock
     app.dependency_overrides[gear_deps.validate_gear_type] = _mock

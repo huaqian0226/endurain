@@ -22,8 +22,8 @@ router = APIRouter()
 )
 def list_activity_workout_steps(
     activity_id: activity_dependencies.ActivityId,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:read"])],
-    token_user_id: Annotated[int, Depends(auth_dependencies.get_sub_from_access_token)],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:read"])],
+    token_user_id: Annotated[int, Depends(auth_dependencies.get_user_id_from_auth)],
     db: Annotated[Session, Depends(core_database.get_db)],
     page: Annotated[core_pagination.PageParams, Depends(core_pagination.child_page_params)],
 ) -> activity_workout_steps_schema.ActivityWorkoutStepsPage:
