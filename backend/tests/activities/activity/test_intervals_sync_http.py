@@ -311,6 +311,8 @@ def test_valid_status_returns_whitelisted_fields_only(env):
         "trigger",
         "last_requested_at",
         "request_pending",
+        "last_delete",
+        "pending_deletes",
     }
     assert body["enabled"] is True
     assert body["state"] == "idle"
@@ -318,6 +320,8 @@ def test_valid_status_returns_whitelisted_fields_only(env):
     assert body["last_result"] == "partial"
     assert body["counts"] == {"done": 3, "failed": 1, "gave_up": 0, "skipped": 2, "pending": 0}
     assert body["request_pending"] is False
+    assert body["last_delete"] is None
+    assert body["pending_deletes"] == 0
     assert "should-never-appear" not in resp.text
     assert "abc123" not in resp.text
 

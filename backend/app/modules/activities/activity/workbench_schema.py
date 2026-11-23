@@ -144,6 +144,7 @@ class AssetUsageRead(BaseModel):
 IntervalsSyncState = Literal["idle", "running", "unknown"]
 IntervalsSyncResult = Literal["ok", "partial", "missing_key", "auth_rejected", "list_failed", "error"]
 IntervalsSyncTrigger = Literal["manual", "scheduled"]
+IntervalsSyncDeleteResult = Literal["ok", "not_found", "rejected", "failed", "pending"]
 
 
 class IntervalsSyncDisabledRead(BaseModel):
@@ -162,6 +163,15 @@ class IntervalsSyncCountsRead(BaseModel):
     pending: int
 
 
+class IntervalsSyncLastDeleteRead(BaseModel):
+    """Whitelisted summary of the latest intervals.icu delete execution."""
+
+    requested_at: datetime | None = None
+    finished_at: datetime | None = None
+    result: IntervalsSyncDeleteResult
+    activity_id: int
+
+
 class IntervalsSyncStatusRead(BaseModel):
     """Whitelisted status summary of the host intervals.icu sync bridge."""
 
@@ -174,6 +184,8 @@ class IntervalsSyncStatusRead(BaseModel):
     trigger: IntervalsSyncTrigger | None = None
     last_requested_at: datetime | None = None
     request_pending: bool = False
+    last_delete: IntervalsSyncLastDeleteRead | None = None
+    pending_deletes: int = 0
 
 
 class IntervalsSyncRequestAcceptedRead(BaseModel):
@@ -181,3 +193,24 @@ class IntervalsSyncRequestAcceptedRead(BaseModel):
 
     accepted: Literal[True] = True
     requested_at: datetime
+
+
+class IntervalsSyncActivityRead(BaseModel):
+    """Lookup result indicating whether an activity was imported from intervals.icu."""
+
+    intervals_id: str | None = None
+
+
+class IntervalsSyncDeleteRequestCreate(BaseModel):
+    """Request payload to queue an intervals.icu deletion for an imported activity."""
+
+    model_config = ConfigDict(extra="forbid")
+    activity_id: int = Field(gt=0)
+
+
+class IntervalsSyncDeleteRequestRead(BaseModel):
+    """Confirmation for a queued or already pending intervals.icu delete request."""
+
+    accepted: Literal[True] = True
+    request_id: str
+    intervals_id: str

@@ -75,6 +75,11 @@ _TIERED_ENDPOINTS = [
         core_rate_limit.WRITE,
         id="workbench-request-intervals-sync",
     ),
+    pytest.param(
+        workbench_router.request_intervals_delete,
+        core_rate_limit.WRITE,
+        id="workbench-request-intervals-delete",
+    ),
     pytest.param(auth_router.login_for_access_token, core_rate_limit.SENSITIVE, id="login"),
     pytest.param(auth_router.verify_mfa_and_login, core_rate_limit.SENSITIVE, id="mfa-verify"),
     pytest.param(auth_router.refresh_token, core_rate_limit.WRITE, id="token-refresh"),

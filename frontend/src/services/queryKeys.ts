@@ -140,6 +140,8 @@ export const queryKeys = {
     equipmentCandidates: () => ['activities', 'equipment-candidates'] as const,
     /** Host intervals.icu sync bridge status for the configured owner. */
     intervalsSync: () => ['activities', 'intervals-sync'] as const,
+    /** intervals.icu import mapping lookup for one activity. */
+    intervalsActivity: (id: number) => ['activities', 'intervals-activity', id] as const,
     /** Broad prefix; invalidating this cascades to every activities query. */
     all: () => ['activities'] as const,
     lists: () => ['activities', 'list'] as const,

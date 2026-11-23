@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { EllipsisVertical, ImagePlus, Pencil, Trash2 } from '@lucide/vue'
@@ -19,6 +19,10 @@ import {
   useDeleteActivityMutation,
   useUploadActivityMediaMutation,
 } from '@/features/activities/composables/useActivityDetail'
+import {
+  useIntervalsActivityQuery,
+  useRequestIntervalsDeleteMutation,
+} from '@/features/activities/composables/useIntervalsSync'
 import ActivityEditDialog from '@/features/activities/components/ActivityEditDialog.vue'
 
 const props = defineProps<{
@@ -31,10 +35,23 @@ const router = useRouter()
 const toasts = useToasts()
 
 const deleteMutation = useDeleteActivityMutation()
+const deleteIntervalsMutation = useRequestIntervalsDeleteMutation()
 const uploadMutation = useUploadActivityMediaMutation(() => props.activity.id)
 const isDeleteOpen = ref(false)
 const isEditOpen = ref(false)
+const alsoDeleteIntervals = ref(false)
+const isDeleting = ref(false)
 const fileInput = ref<HTMLInputElement | null>(null)
+
+const intervalsActivityQuery = useIntervalsActivityQuery(() => props.activity.id, isDeleteOpen)
+
+const hasIntervalsId = computed(() =>
+  Boolean(!intervalsActivityQuery.isError.value && intervalsActivityQuery.data.value?.intervals_id),
+)
+
+watch(isDeleteOpen, () => {
+  alsoDeleteIntervals.value = false
+})
 
 /** Opens the native file picker for the Add photo action. */
 function openFilePicker(): void {
@@ -61,15 +78,32 @@ async function onFileSelected(event: Event): Promise<void> {
   }
 }
 
-/** Deletes the activity, then returns to the home feed. */
+/** Deletes the activity (and optionally queues an intervals.icu delete), then returns home. */
 async function confirmDelete(): Promise<void> {
+  const shouldDeleteIntervals = alsoDeleteIntervals.value && hasIntervalsId.value
+  isDeleting.value = true
   try {
-    await deleteMutation.mutateAsync(props.activity.id)
+    try {
+      await deleteMutation.mutateAsync(props.activity.id)
+    } catch {
+      toasts.error(t('activities.actions.deleteError'))
+      return
+    }
+
     isDeleteOpen.value = false
-    toasts.success(t('activities.actions.deleteSuccess'))
+    if (shouldDeleteIntervals) {
+      try {
+        await deleteIntervalsMutation.mutateAsync(props.activity.id)
+        toasts.success(t('activities.actions.deleteSuccessWithIntervals'))
+      } catch {
+        toasts.warning(t('activities.actions.deleteIntervalsError'))
+      }
+    } else {
+      toasts.success(t('activities.actions.deleteSuccess'))
+    }
     await router.push({ name: 'home' })
-  } catch {
-    toasts.error(t('activities.actions.deleteError'))
+  } finally {
+    isDeleting.value = false
   }
 }
 </script>
@@ -113,7 +147,22 @@ async function confirmDelete(): Promise<void> {
     :confirm-label="t('activities.actions.delete')"
     :cancel-label="t('activities.actions.cancel')"
     :close-label="t('activities.actions.close')"
-    :pending="deleteMutation.isPending.value"
+    :pending="isDeleting"
     @confirm="confirmDelete"
-  />
+  >
+    <div v-if="hasIntervalsId" class="mt-1 flex flex-col gap-1">
+      <label class="flex cursor-pointer items-start gap-2.5 text-sm text-foreground">
+        <input
+          v-model="alsoDeleteIntervals"
+          type="checkbox"
+          class="mt-0.5 size-4 shrink-0 rounded border-border accent-destructive focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+          :disabled="isDeleting"
+        />
+        <span>{{ t('activities.actions.deleteIntervalsLabel') }}</span>
+      </label>
+      <p class="pl-6.5 text-xs text-muted-foreground">
+        {{ t('activities.actions.deleteIntervalsHint') }}
+      </p>
+    </div>
+  </ConfirmDialog>
 </template>

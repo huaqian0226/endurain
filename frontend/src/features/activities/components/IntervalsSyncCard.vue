@@ -14,6 +14,7 @@ import {
   useRequestIntervalsSyncMutation,
 } from '@/features/activities/composables/useIntervalsSync'
 import type {
+  IntervalsSyncDeleteResult,
   IntervalsSyncResult,
   IntervalsSyncStatusEnabled,
 } from '@/features/activities/services/intervalsSync'
@@ -27,6 +28,14 @@ const RESULT_LABEL_KEYS: Record<IntervalsSyncResult, string> = {
   auth_rejected: 'activities.intervalsSync.results.authRejected',
   list_failed: 'activities.intervalsSync.results.listFailed',
   error: 'activities.intervalsSync.results.error',
+}
+
+const DELETE_RESULT_LABEL_KEYS: Record<IntervalsSyncDeleteResult, string> = {
+  ok: 'activities.intervalsSync.deleteResults.ok',
+  not_found: 'activities.intervalsSync.deleteResults.notFound',
+  rejected: 'activities.intervalsSync.deleteResults.rejected',
+  failed: 'activities.intervalsSync.deleteResults.failed',
+  pending: 'activities.intervalsSync.deleteResults.pending',
 }
 
 const { t, locale } = useI18n()
@@ -50,6 +59,23 @@ const isBusy = computed(
     requestMutation.isPending.value || isPolling.value || enabledStatus.value?.state === 'running',
 )
 
+function formatTimestamp(timestamp: string | null): string | null {
+  if (!timestamp) {
+    return null
+  }
+  const date = new Date(timestamp)
+  if (Number.isNaN(date.getTime())) {
+    return null
+  }
+  return new Intl.DateTimeFormat(locale.value, {
+    month: 'short',
+    day: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date)
+}
+
 const formattedLastSync = computed<string>(() => {
   const current = enabledStatus.value
   if (!current) {
@@ -61,24 +87,48 @@ const formattedLastSync = computed<string>(() => {
     return t('activities.intervalsSync.noRecord')
   }
   const resultText = result ? t(RESULT_LABEL_KEYS[result]) : ''
-  if (!timestamp) {
-    return resultText
-  }
-  const date = new Date(timestamp)
-  if (Number.isNaN(date.getTime())) {
+  const timeText = formatTimestamp(timestamp)
+  if (!timeText) {
     return resultText || t('activities.intervalsSync.noRecord')
   }
-  const timeText = new Intl.DateTimeFormat(locale.value, {
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).format(date)
   if (!resultText) {
     return t('activities.intervalsSync.noRecord')
   }
   return t('activities.intervalsSync.lastSync', { time: timeText, result: resultText })
+})
+
+const formattedLastDelete = computed<string>(() => {
+  const current = enabledStatus.value
+  if (!current) {
+    return ''
+  }
+  const lastDelete = current.last_delete ?? null
+  if (lastDelete) {
+    const resultText = t(DELETE_RESULT_LABEL_KEYS[lastDelete.result])
+    const timeText = formatTimestamp(lastDelete.finished_at ?? lastDelete.requested_at)
+    if (timeText) {
+      return t('activities.intervalsSync.lastDelete', { time: timeText, result: resultText })
+    }
+    return t('activities.intervalsSync.lastDeleteNoTime', { result: resultText })
+  }
+  if ((current.pending_deletes ?? 0) > 0) {
+    return t('activities.intervalsSync.lastDeleteNoTime', {
+      result: t('activities.intervalsSync.deleteResults.pending'),
+    })
+  }
+  return ''
+})
+
+const showPendingDeleteNote = computed<boolean>(() => {
+  const current = enabledStatus.value
+  if (!current) {
+    return false
+  }
+  return Boolean(
+    (current.pending_deletes ?? 0) > 0 &&
+    current.last_delete &&
+    current.last_delete.result !== 'pending',
+  )
 })
 
 const feedbackText = computed<string>(() => {
@@ -162,6 +212,12 @@ async function handleSync(): Promise<void> {
 
     <div class="flex flex-col gap-1">
       <p class="text-xs text-foreground">{{ formattedLastSync }}</p>
+      <p v-if="formattedLastDelete" class="text-xs text-muted-foreground">
+        {{ formattedLastDelete }}
+      </p>
+      <p v-if="showPendingDeleteNote" class="text-xs text-muted-foreground">
+        {{ t('activities.intervalsSync.pendingDeletes') }}
+      </p>
       <p class="text-xs text-muted-foreground">
         {{ t('activities.intervalsSync.scheduleHint') }}
       </p>

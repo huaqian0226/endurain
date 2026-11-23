@@ -157,7 +157,11 @@
     "cancel": "取消",
     "close": "关闭",
     "deleteSuccess": "活动已删除",
-    "deleteError": "无法删除活动"
+    "deleteSuccessWithIntervals": "活动已删除。已请求删除 intervals.icu 上的这条，会在 Mac 上执行",
+    "deleteError": "无法删除活动",
+    "deleteIntervalsLabel": "同时删除 intervals.icu 上的这条（删除后无法恢复）",
+    "deleteIntervalsHint": "只删 intervals.icu 上的副本；iGPSPORT 和 Strava 上的不受影响。",
+    "deleteIntervalsError": "Endurain 已删除，但 intervals.icu 删除请求没有发出"
   },
   "media": {
     "alt": "活动照片",
@@ -294,6 +298,9 @@
   "intervalsSync": {
     "title": "intervals.icu 同步",
     "lastSync": "上次同步：{time} · {result}",
+    "lastDelete": "上次删除 intervals：{time} · {result}",
+    "lastDeleteNoTime": "上次删除 intervals：{result}",
+    "pendingDeletes": "有未处理的 intervals.icu 删除请求 · 等待执行",
     "noRecord": "还没有同步记录",
     "scheduleHint": "自动同步：每天 22:00",
     "syncNow": "立即同步",
@@ -311,6 +318,13 @@
       "authRejected": "key 被拒绝",
       "listFailed": "连不上 intervals.icu",
       "error": "出错了"
+    },
+    "deleteResults": {
+      "ok": "已删除",
+      "notFound": "那边已经没有了",
+      "rejected": "核对不符，未删",
+      "failed": "失败",
+      "pending": "等待执行"
     }
   }
 }

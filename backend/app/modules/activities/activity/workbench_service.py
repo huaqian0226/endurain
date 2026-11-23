@@ -4,6 +4,7 @@ import contextlib
 import hashlib
 import json
 import os
+import re
 import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -131,12 +132,15 @@ def read_mapping(user_id: int, vehicle_uuid: str, db: Session) -> schema.Vehicle
 
 
 _INTERVALS_BRIDGE_MAX_BYTES = 65_536
+_INTERVALS_IMPORTED_MAX_BYTES = 1_048_576
 _INTERVALS_RUNNING_STALE_WINDOW = timedelta(minutes=30)
 _INTERVALS_RECENT_REQUEST_WINDOW = timedelta(seconds=60)
 _INTERVALS_ALLOWED_STATES = frozenset({"idle", "running"})
 _INTERVALS_ALLOWED_TRIGGERS = frozenset({"manual", "scheduled"})
 _INTERVALS_ALLOWED_RESULTS = frozenset({"ok", "partial", "missing_key", "auth_rejected", "list_failed", "error"})
+_INTERVALS_ALLOWED_DELETE_RESULTS = frozenset({"ok", "not_found", "rejected", "failed", "pending"})
 _INTERVALS_COUNT_KEYS = ("done", "failed", "gave_up", "skipped", "pending")
+_INTERVALS_ID_RE = re.compile(r"i?[0-9]{1,20}")
 
 
 @dataclass(frozen=True)
@@ -150,6 +154,18 @@ class _ParsedSyncStatus:
     result: schema.IntervalsSyncResult | None
     counts: schema.IntervalsSyncCountsRead | None
     handled_request_id: str | None
+    last_delete: schema.IntervalsSyncLastDeleteRead | None
+    handled_delete_request_ids: frozenset[str]
+
+
+@dataclass(frozen=True)
+class _ParsedDeleteRequest:
+    """Validated fields extracted from a bridge delete-request file."""
+
+    request_id: str
+    activity_id: int
+    intervals_id: str
+    requested_at: datetime
 
 
 def _intervals_sync_root(user_id: int) -> Path | None:
@@ -163,17 +179,24 @@ def _intervals_sync_root(user_id: int) -> Path | None:
     return Path(sync_dir)
 
 
-def _read_bridge_json(path: Path) -> dict | None:
-    """Read a small JSON object from the bridge directory, returning None on any error."""
+def _read_bridge_json(path: Path, max_bytes: int = _INTERVALS_BRIDGE_MAX_BYTES) -> dict | None:
+    """Read a bounded JSON object from the bridge directory, returning None on any error."""
     try:
         with path.open("rb") as fh:
-            raw = fh.read(_INTERVALS_BRIDGE_MAX_BYTES + 1)
-        if len(raw) > _INTERVALS_BRIDGE_MAX_BYTES:
+            raw = fh.read(max_bytes + 1)
+        if len(raw) > max_bytes:
             return None
         parsed = json.loads(raw.decode("utf-8"))
     except (OSError, UnicodeDecodeError, ValueError):
         return None
     return parsed if isinstance(parsed, dict) else None
+
+
+def _validate_intervals_id(value: object) -> str | None:
+    """Return the validated intervals.icu activity id, or None if invalid."""
+    if not isinstance(value, str) or not _INTERVALS_ID_RE.fullmatch(value):
+        return None
+    return value
 
 
 def _parse_iso_utc(value: object) -> datetime | None:
@@ -208,6 +231,35 @@ def _parse_sync_counts(raw_counts: object) -> tuple[bool, schema.IntervalsSyncCo
             return False, None
         values[key] = val
     return True, schema.IntervalsSyncCountsRead(**values)
+
+
+def _parse_last_delete(raw: object) -> schema.IntervalsSyncLastDeleteRead | None:
+    """Validate whitelisted last_delete fields from status.json, returning None if invalid."""
+    if not isinstance(raw, dict):
+        return None
+    result = raw.get("result")
+    if not isinstance(result, str) or result not in _INTERVALS_ALLOWED_DELETE_RESULTS:
+        return None
+    activity_id = raw.get("activity_id")
+    if type(activity_id) is not int or activity_id <= 0:
+        return None
+    requested_ok, requested_at = _parse_optional_iso_utc(raw.get("requested_at"))
+    finished_ok, finished_at = _parse_optional_iso_utc(raw.get("finished_at"))
+    if not (requested_ok and finished_ok):
+        return None
+    return schema.IntervalsSyncLastDeleteRead(
+        requested_at=requested_at,
+        finished_at=finished_at,
+        result=cast(schema.IntervalsSyncDeleteResult, result),
+        activity_id=activity_id,
+    )
+
+
+def _parse_handled_delete_ids(raw: object) -> frozenset[str]:
+    """Extract validated handled delete request ids from status.json, defaulting to empty."""
+    if not isinstance(raw, list):
+        return frozenset()
+    return frozenset(item for item in raw if isinstance(item, str) and item.strip())
 
 
 def _parse_status_file(path: Path) -> _ParsedSyncStatus | None:
@@ -250,6 +302,8 @@ def _parse_status_file(path: Path) -> _ParsedSyncStatus | None:
         result=cast(schema.IntervalsSyncResult | None, result),
         counts=counts,
         handled_request_id=handled_request_id,
+        last_delete=_parse_last_delete(data.get("last_delete")),
+        handled_delete_request_ids=_parse_handled_delete_ids(data.get("handled_delete_request_ids")),
     )
 
 
@@ -265,6 +319,91 @@ def _parse_request_file(path: Path) -> tuple[str, datetime] | None:
     if requested_at is None:
         return None
     return request_id, requested_at
+
+
+def _read_imported_intervals_id(root: Path, activity_id: int) -> str | None:
+    """Look up a validated intervals.icu activity id in status/imported.json."""
+    data = _read_bridge_json(root / "status" / "imported.json", max_bytes=_INTERVALS_IMPORTED_MAX_BYTES)
+    if data is None:
+        return None
+    schema_version = data.get("schema")
+    if type(schema_version) is not int or schema_version != 1:
+        return None
+    activities = data.get("activities")
+    if not isinstance(activities, dict):
+        return None
+    return _validate_intervals_id(activities.get(str(activity_id)))
+
+
+def _parse_delete_request_file(path: Path) -> _ParsedDeleteRequest | None:
+    """Validate and extract a delete request file, returning None if corrupt."""
+    data = _read_bridge_json(path)
+    if data is None:
+        return None
+    schema_version = data.get("schema")
+    if type(schema_version) is not int or schema_version != 1:
+        return None
+    request_id = data.get("request_id")
+    if not isinstance(request_id, str) or not request_id.strip():
+        return None
+    activity_id = data.get("activity_id")
+    if type(activity_id) is not int or activity_id <= 0:
+        return None
+    intervals_id = _validate_intervals_id(data.get("intervals_id"))
+    if intervals_id is None:
+        return None
+    requested_at = _parse_iso_utc(data.get("requested_at"))
+    if requested_at is None:
+        return None
+    return _ParsedDeleteRequest(
+        request_id=request_id,
+        activity_id=activity_id,
+        intervals_id=intervals_id,
+        requested_at=requested_at,
+    )
+
+
+def _list_unhandled_delete_requests(root: Path, handled_ids: frozenset[str]) -> list[_ParsedDeleteRequest]:
+    """Return valid unhandled delete requests in deterministic order, ignoring corrupt files."""
+    delete_dir = root / "delete-requests"
+    try:
+        entries = list(delete_dir.iterdir())
+    except OSError:
+        return []
+    requests: list[_ParsedDeleteRequest] = []
+    for entry in entries:
+        if entry.name.startswith(".") or entry.suffix != ".json" or not entry.is_file():
+            continue
+        parsed = _parse_delete_request_file(entry)
+        if parsed is not None and parsed.request_id not in handled_ids:
+            requests.append(parsed)
+    requests.sort(key=lambda item: (item.requested_at, item.request_id))
+    return requests
+
+
+def _write_atomic_json(target_dir: Path, filename: str, tmp_prefix: str, payload: dict) -> None:
+    """Atomically write a JSON object into target_dir/filename via tempfile + fsync + replace."""
+    tmp_path: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(
+            mode="w",
+            encoding="utf-8",
+            dir=target_dir,
+            prefix=tmp_prefix,
+            suffix=".tmp",
+            delete=False,
+        ) as tmp_file:
+            tmp_path = Path(tmp_file.name)
+            json.dump(payload, tmp_file)
+            tmp_file.flush()
+            os.fsync(tmp_file.fileno())
+        with contextlib.suppress(OSError):
+            os.chmod(tmp_path, 0o644)
+        os.replace(tmp_path, target_dir / filename)
+        tmp_path = None
+    finally:
+        if tmp_path is not None:
+            tmp_path.unlink(missing_ok=True)
 
 
 def read_intervals_sync(user_id: int) -> schema.IntervalsSyncDisabledRead | schema.IntervalsSyncStatusRead:
@@ -286,12 +425,16 @@ def read_intervals_sync(user_id: int) -> schema.IntervalsSyncDisabledRead | sche
     last_requested_at = parsed_request[1] if parsed_request is not None else None
     handled_id = parsed_status.handled_request_id if parsed_status is not None else None
     request_pending = bool(parsed_request is not None and parsed_request[0] != handled_id)
+    handled_delete_ids = parsed_status.handled_delete_request_ids if parsed_status is not None else frozenset()
+    pending_deletes = len(_list_unhandled_delete_requests(root, handled_delete_ids))
 
     if parsed_status is None:
         return schema.IntervalsSyncStatusRead(
             state="unknown",
             last_requested_at=last_requested_at,
             request_pending=request_pending,
+            last_delete=None,
+            pending_deletes=pending_deletes,
         )
 
     return schema.IntervalsSyncStatusRead(
@@ -303,6 +446,8 @@ def read_intervals_sync(user_id: int) -> schema.IntervalsSyncDisabledRead | sche
         trigger=parsed_status.trigger,
         last_requested_at=last_requested_at,
         request_pending=request_pending,
+        last_delete=parsed_status.last_delete,
+        pending_deletes=pending_deletes,
     )
 
 
@@ -353,32 +498,126 @@ def request_intervals_sync(user_id: int) -> schema.IntervalsSyncRequestAcceptedR
         "requested_at": requested_at.isoformat().replace("+00:00", "Z"),
     }
 
-    tmp_path: Path | None = None
     try:
-        with tempfile.NamedTemporaryFile(
-            mode="w",
-            encoding="utf-8",
-            dir=trigger_dir,
-            prefix=".request.",
-            suffix=".tmp",
-            delete=False,
-        ) as tmp_file:
-            tmp_path = Path(tmp_file.name)
-            json.dump(payload, tmp_file)
-            tmp_file.flush()
-            os.fsync(tmp_file.fileno())
-        with contextlib.suppress(OSError):
-            os.chmod(tmp_path, 0o644)
-        os.replace(tmp_path, trigger_dir / "request.json")
-        tmp_path = None
+        _write_atomic_json(trigger_dir, "request.json", ".request.", payload)
     except OSError as exc:
         logger.error(
             "Failed to write intervals.icu sync request", exc_info=exc, extra=core_logger.context(user_id=user_id)
         )
         raise errors.ServiceUnavailableError("Unable to write sync request") from exc
-    finally:
-        if tmp_path is not None:
-            tmp_path.unlink(missing_ok=True)
 
     logger.info("Accepted intervals.icu sync request", extra=core_logger.context(user_id=user_id))
     return schema.IntervalsSyncRequestAcceptedRead(accepted=True, requested_at=requested_at)
+
+
+def read_intervals_activity(user_id: int, activity_id: int) -> schema.IntervalsSyncActivityRead:
+    """Look up whether an activity was imported from intervals.icu for the configured owner.
+
+    Args:
+        user_id: Authenticated caller's user id.
+        activity_id: Endurain activity identifier to check.
+
+    Returns:
+        Validated intervals.icu activity id, or None when disabled, non-owner, or not imported.
+    """
+    root = _intervals_sync_root(user_id)
+    if root is None:
+        return schema.IntervalsSyncActivityRead(intervals_id=None)
+    return schema.IntervalsSyncActivityRead(intervals_id=_read_imported_intervals_id(root, activity_id))
+
+
+def request_intervals_delete(user_id: int, activity_id: int) -> tuple[schema.IntervalsSyncDeleteRequestRead, bool]:
+    """Queue an intervals.icu delete request on the host bridge for an imported activity.
+
+    Args:
+        user_id: Authenticated caller's user id.
+        activity_id: Endurain activity identifier that was imported from intervals.icu.
+
+    Returns:
+        Tuple of (response payload, created). ``created`` is False when an unhandled
+        request for the same activity already exists (idempotent 200).
+
+    Raises:
+        NotFoundError: Feature is disabled or caller is not the configured owner.
+        ConflictError: Activity is not mapped in ``status/imported.json`` (``not_imported``).
+        ServiceUnavailableError: Bridge delete-requests or trigger directory is missing/unwritable.
+    """
+    root = _intervals_sync_root(user_id)
+    if root is None:
+        raise errors.NotFoundError("Not found")
+
+    intervals_id = _read_imported_intervals_id(root, activity_id)
+    if intervals_id is None:
+        raise errors.ConflictError("not_imported")
+
+    delete_dir = root / "delete-requests"
+    if not delete_dir.is_dir():
+        raise errors.ServiceUnavailableError("Delete requests directory is unavailable")
+
+    parsed_status = _parse_status_file(root / "status" / "status.json")
+    handled_delete_ids = parsed_status.handled_delete_request_ids if parsed_status is not None else frozenset()
+    for existing in _list_unhandled_delete_requests(root, handled_delete_ids):
+        if existing.activity_id == activity_id:
+            return (
+                schema.IntervalsSyncDeleteRequestRead(
+                    accepted=True,
+                    request_id=existing.request_id,
+                    intervals_id=existing.intervals_id,
+                ),
+                False,
+            )
+
+    handled_trigger_id = parsed_status.handled_request_id if parsed_status is not None else None
+    parsed_trigger = _parse_request_file(root / "trigger" / "request.json")
+    has_unhandled_trigger = parsed_trigger is not None and parsed_trigger[0] != handled_trigger_id
+    trigger_dir = root / "trigger"
+    if not has_unhandled_trigger and not trigger_dir.is_dir():
+        raise errors.ServiceUnavailableError("Sync trigger directory is unavailable")
+
+    requested_at = datetime.now(UTC).replace(microsecond=0)
+    requested_at_iso = requested_at.isoformat().replace("+00:00", "Z")
+    request_id = uuid4().hex
+    delete_payload = {
+        "schema": 1,
+        "request_id": request_id,
+        "activity_id": activity_id,
+        "intervals_id": intervals_id,
+        "requested_at": requested_at_iso,
+    }
+    try:
+        _write_atomic_json(delete_dir, f"{request_id}.json", ".delete.", delete_payload)
+    except OSError as exc:
+        logger.error(
+            "Failed to write intervals.icu delete request",
+            exc_info=exc,
+            extra=core_logger.context(user_id=user_id, activity_id=activity_id),
+        )
+        raise errors.ServiceUnavailableError("Unable to write delete request") from exc
+
+    if not has_unhandled_trigger:
+        trigger_payload = {
+            "request_id": uuid4().hex,
+            "requested_at": requested_at_iso,
+        }
+        try:
+            _write_atomic_json(trigger_dir, "request.json", ".request.", trigger_payload)
+        except OSError as exc:
+            logger.error(
+                "Failed to write intervals.icu sync trigger for delete request",
+                exc_info=exc,
+                extra=core_logger.context(user_id=user_id, activity_id=activity_id),
+            )
+            raise errors.ServiceUnavailableError("Unable to write sync trigger") from exc
+
+    logger.info(
+        "Accepted intervals.icu delete request",
+        extra=core_logger.context(user_id=user_id, activity_id=activity_id),
+    )
+    return (
+        schema.IntervalsSyncDeleteRequestRead(
+            accepted=True,
+            request_id=request_id,
+            intervals_id=intervals_id,
+        ),
+        True,
+    )

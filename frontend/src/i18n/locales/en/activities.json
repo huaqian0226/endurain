@@ -157,7 +157,11 @@
     "cancel": "Cancel",
     "close": "Close",
     "deleteSuccess": "Activity deleted",
-    "deleteError": "Couldn't delete the activity"
+    "deleteSuccessWithIntervals": "Activity deleted. Requested deletion on intervals.icu (will run on Mac).",
+    "deleteError": "Couldn't delete the activity",
+    "deleteIntervalsLabel": "Also delete this activity on intervals.icu (cannot be undone)",
+    "deleteIntervalsHint": "Deletes only the copy on intervals.icu; iGPSPORT and Strava are not affected.",
+    "deleteIntervalsError": "Deleted in Endurain, but the intervals.icu delete request was not sent."
   },
   "media": {
     "alt": "Activity photo",
@@ -294,6 +298,9 @@
   "intervalsSync": {
     "title": "intervals.icu Sync",
     "lastSync": "Last sync: {time} · {result}",
+    "lastDelete": "Last intervals delete: {time} · {result}",
+    "lastDeleteNoTime": "Last intervals delete: {result}",
+    "pendingDeletes": "Pending intervals.icu delete request · Pending",
     "noRecord": "No sync records yet",
     "scheduleHint": "Auto-sync: daily at 22:00",
     "syncNow": "Sync now",
@@ -311,6 +318,13 @@
       "authRejected": "Key rejected",
       "listFailed": "Could not connect to intervals.icu",
       "error": "Error"
+    },
+    "deleteResults": {
+      "ok": "Deleted",
+      "notFound": "Already removed there",
+      "rejected": "Verification mismatch, not deleted",
+      "failed": "Failed",
+      "pending": "Pending"
     }
   }
 }

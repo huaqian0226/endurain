@@ -4,12 +4,13 @@ from collections.abc import Callable
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Security, status
+from fastapi import APIRouter, Depends, Request, Response, Security, status
 from sqlalchemy.orm import Session
 
 import core.database as database
 import core.dependencies as core_dependencies
 import core.rate_limit as rate_limit
+import modules.activities.activity.dependencies as activity_dependencies
 import modules.activities.activity.workbench_schema as schema
 import modules.activities.activity.workbench_service as service
 import modules.auth.dependencies as auth
@@ -99,3 +100,36 @@ def request_intervals_sync(
 ) -> schema.IntervalsSyncRequestAcceptedRead:
     """Queue a manual intervals.icu sync request on the host bridge."""
     return service.request_intervals_sync(user_id)
+
+
+@router.get(
+    "/intervals-sync/activities/{activity_id}",
+    response_model=schema.IntervalsSyncActivityRead,
+)
+def read_intervals_activity(
+    activity_id: activity_dependencies.ActivityId,
+    _scope: Annotated[Callable, Security(auth.check_auth_scopes, scopes=["activities:read"])],
+    user_id: Annotated[int, Depends(auth.get_user_id_from_auth)],
+) -> schema.IntervalsSyncActivityRead:
+    """Look up whether an activity was imported from intervals.icu for the configured owner."""
+    return service.read_intervals_activity(user_id, activity_id)
+
+
+@router.post(
+    "/intervals-sync/delete-requests",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=schema.IntervalsSyncDeleteRequestRead,
+)
+@rate_limit.limiter.limit(rate_limit.WRITE)
+def request_intervals_delete(
+    request: Request,
+    response: Response,
+    body: schema.IntervalsSyncDeleteRequestCreate,
+    _scope: Annotated[Callable, Security(auth.check_auth_scopes, scopes=["activities:write"])],
+    user_id: Annotated[int, Depends(auth.get_user_id_from_auth)],
+) -> schema.IntervalsSyncDeleteRequestRead:
+    """Queue an intervals.icu delete request on the host bridge for an imported activity."""
+    result, created = service.request_intervals_delete(user_id, body.activity_id)
+    if not created:
+        response.status_code = status.HTTP_200_OK
+    return result

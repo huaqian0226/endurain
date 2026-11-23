@@ -55,6 +55,8 @@ const emit = defineEmits<{
         <DialogDescription>{{ description }}</DialogDescription>
       </DialogHeader>
 
+      <slot />
+
       <DialogFooter class="mt-1">
         <Button type="button" variant="ghost" :disabled="pending" @click="open = false">
           {{ cancelLabel }}

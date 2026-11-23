@@ -274,4 +274,109 @@ describe('IntervalsSyncCard', () => {
     expect(wrapper.text()).toContain(label)
     wrapper.unmount()
   })
+
+  it.each([
+    ['ok', '已删除'],
+    ['not_found', '那边已经没有了'],
+    ['rejected', '核对不符，未删'],
+    ['failed', '失败'],
+    ['pending', '等待执行'],
+  ] as const)(
+    'shows last delete line with localized label for result %s',
+    async (result, label) => {
+      vi.mocked(apiFetch).mockResolvedValueOnce({
+        enabled: true,
+        state: 'idle',
+        last_started_at: '2026-11-23T22:00:00Z',
+        last_finished_at: '2026-11-23T22:00:10Z',
+        last_result: 'ok',
+        counts: { done: 1, failed: 0, gave_up: 0, skipped: 0, pending: 0 },
+        trigger: 'scheduled',
+        last_requested_at: null,
+        request_pending: false,
+        last_delete: {
+          requested_at: '2026-11-23T21:55:00Z',
+          finished_at: result === 'pending' ? null : '2026-11-23T21:55:04Z',
+          result,
+          activity_id: 7,
+        },
+        pending_deletes: result === 'pending' ? 1 : 0,
+      })
+      const { wrapper } = mountCard()
+      await flushPromises()
+      const text = wrapper.text()
+      expect(text).toContain('上次删除 intervals：')
+      expect(text).toContain(label)
+      wrapper.unmount()
+    },
+  )
+
+  it('shows pending delete indicator when pending_deletes > 0 without last_delete', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      enabled: true,
+      state: 'idle',
+      last_started_at: '2026-11-23T22:00:00Z',
+      last_finished_at: '2026-11-23T22:00:10Z',
+      last_result: 'ok',
+      counts: { done: 1, failed: 0, gave_up: 0, skipped: 0, pending: 0 },
+      trigger: 'scheduled',
+      last_requested_at: null,
+      request_pending: false,
+      last_delete: null,
+      pending_deletes: 1,
+    })
+    const { wrapper } = mountCard()
+    await flushPromises()
+    expect(wrapper.text()).toContain('等待执行')
+    wrapper.unmount()
+  })
+
+  it('shows pending delete indicator alongside an older completed last_delete', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      enabled: true,
+      state: 'idle',
+      last_started_at: '2026-11-23T22:00:00Z',
+      last_finished_at: '2026-11-23T22:00:10Z',
+      last_result: 'ok',
+      counts: { done: 1, failed: 0, gave_up: 0, skipped: 0, pending: 0 },
+      trigger: 'scheduled',
+      last_requested_at: null,
+      request_pending: false,
+      last_delete: {
+        requested_at: '2026-11-22T10:00:00Z',
+        finished_at: '2026-11-22T10:00:05Z',
+        result: 'ok',
+        activity_id: 5,
+      },
+      pending_deletes: 2,
+    })
+    const { wrapper } = mountCard()
+    await flushPromises()
+    const text = wrapper.text()
+    expect(text).toContain('上次删除 intervals：')
+    expect(text).toContain('已删除')
+    expect(text).toContain('等待执行')
+    wrapper.unmount()
+  })
+
+  it('hides delete line when last_delete is null and pending_deletes is 0', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce({
+      enabled: true,
+      state: 'idle',
+      last_started_at: '2026-11-23T22:00:00Z',
+      last_finished_at: '2026-11-23T22:00:10Z',
+      last_result: 'ok',
+      counts: { done: 1, failed: 0, gave_up: 0, skipped: 0, pending: 0 },
+      trigger: 'scheduled',
+      last_requested_at: null,
+      request_pending: false,
+      last_delete: null,
+      pending_deletes: 0,
+    })
+    const { wrapper } = mountCard()
+    await flushPromises()
+    expect(wrapper.text()).not.toContain('上次删除 intervals：')
+    expect(wrapper.text()).not.toContain('等待执行')
+    wrapper.unmount()
+  })
 })
