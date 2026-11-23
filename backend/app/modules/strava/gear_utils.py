@@ -201,9 +201,12 @@ def iterate_over_bikes_csv(bikes_file_path: str) -> dict:
                 extra=core_logger.context(console=True),
             )
             for row in core_text_imports.read_bounded_csv(bikes_file_path):
+                row = strava_utils.normalize_strava_csv_row(row)
                 if ("Bike Name" not in row) or ("Bike Brand" not in row) or ("Bike Model" not in row):
                     logger.info(
-                        f"Aborting bikes import: Proper headers not found in {bikes_file_name}.  File should have 'Bike Name', 'Bike Brand', and 'Bike Model'.",
+                        f"Aborting bikes import: Proper headers not found in {bikes_file_name}. "
+                        "File should have 'Bike Name', 'Bike Brand', and 'Bike Model' "
+                        "(or Chinese '自行车名', '自行车品牌', and '自行车型号').",
                         extra=core_logger.context(console=True),
                     )
                     raise HTTPException(
@@ -263,9 +266,12 @@ def iterate_over_shoes_csv(shoes_file_path: str) -> list:
                 extra=core_logger.context(console=True),
             )
             for row in core_text_imports.read_bounded_csv(shoes_file_path):
+                row = strava_utils.normalize_strava_csv_row(row)
                 if ("Shoe Name" not in row) or ("Shoe Brand" not in row) or ("Shoe Model" not in row):
                     logger.info(
-                        f"Aborting shoes import: Proper headers not found in {shoesfilename}. File should have 'Shoe Name', 'Shoe Brand', and 'Shoe Model'.",
+                        f"Aborting shoes import: Proper headers not found in {shoesfilename}. "
+                        "File should have 'Shoe Name', 'Shoe Brand', and 'Shoe Model' "
+                        "(or Chinese '鞋名', '鞋品牌', and '鞋型号').",
                         extra=core_logger.context(console=True),
                     )
                     raise HTTPException(
@@ -312,10 +318,11 @@ def transform_csv_bike_gear_to_schema_gear(bikes_dict: dict, token_user_id: int)
     """
     gears = []
     for bike in bikes_dict:
+        bike_row = strava_utils.normalize_strava_csv_row(bikes_dict[bike])
         new_gear = gears_schema.GearCreate(
             user_id=token_user_id,
-            brand=bikes_dict[bike]["Bike Brand"].strip() if bikes_dict[bike]["Bike Brand"] else None,
-            model=bikes_dict[bike]["Bike Model"].strip() if bikes_dict[bike]["Bike Model"] else None,
+            brand=bike_row["Bike Brand"].strip() if bike_row["Bike Brand"] else None,
+            model=bike_row["Bike Model"].strip() if bike_row["Bike Model"] else None,
             nickname=bike.strip(),
             gear_type=gears_schema.GearType.BIKE,
             active=True,
@@ -344,6 +351,7 @@ def transform_csv_shoe_gear_to_schema_gear(
     newnumber = 1
     shoe_name = ""
     for shoerow in shoes_list:
+        shoerow = strava_utils.normalize_strava_csv_row(shoerow)
         # 1 - Check for nameless shoes and add a novel name. Why?  Because Strava allows nameless shoes, but Endurain does not.
         if (
             shoerow["Shoe Name"] is None

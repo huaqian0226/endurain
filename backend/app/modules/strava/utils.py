@@ -1,5 +1,6 @@
 import time
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 import jasil.providers as platform_providers
 import jasil.runtime as platform_runtime
@@ -264,3 +265,134 @@ def create_strava_client(
         # Log the error and re-raise the exception
         logger.error(f"Error in create_strava_client: {err}", exc_info=err, extra=core_logger.context(console=True))
         raise err
+
+
+#: Localized Strava export CSV headers mapped to the canonical English names
+#: expected by Endurain's bikes, shoes, and activities parsers.
+STRAVA_CSV_HEADER_ALIASES: dict[str, str] = {
+    # bikes.csv
+    "自行车名": "Bike Name",
+    "自行车品牌": "Bike Brand",
+    "自行车型号": "Bike Model",
+    "自行车默认的运动类型": "Bike Default Sport Types",
+    # shoes.csv
+    "鞋名": "Shoe Name",
+    "鞋品牌": "Shoe Brand",
+    "鞋型号": "Shoe Model",
+    "鞋子默认的运动类型": "Shoe Default Sport Types",
+    # activities.csv
+    "活动 ID": "Activity ID",
+    "活动日期": "Activity Date",
+    "活动名称": "Activity Name",
+    "活动类型": "Activity Type",
+    "活动描述": "Activity Description",
+    "活动装备": "Activity Gear",
+    "文件名": "Filename",
+    "媒体": "Media",
+}
+
+#: Reverse lookup from canonical English header to its Simplified Chinese alias
+#: for diagnostic log messages.
+STRAVA_CSV_CHINESE_HEADER_BY_CANONICAL: dict[str, str] = {
+    canonical: localized for localized, canonical in STRAVA_CSV_HEADER_ALIASES.items()
+}
+
+#: Strava Simplified Chinese ``Activity Type`` values mapped to canonical
+#: English labels recognized by ``activity_constants.define_activity_type``.
+STRAVA_ACTIVITY_TYPE_ALIASES: dict[str, str] = {
+    "骑行": "Ride",
+    "跑步": "Run",
+    "越野跑": "Trail Run",
+    "虚拟跑步": "Virtual Run",
+    "砾石路骑行": "Gravel Ride",
+    "砾石骑行": "Gravel Ride",
+    "山地自行车骑行": "MountainBikeRide",
+    "山地骑行": "MountainBikeRide",
+    "虚拟骑行": "Virtual Ride",
+    "游泳": "Swim",
+    "锻炼": "Workout",
+    "训练": "Workout",
+    "步行": "Walk",
+    "健走": "Walk",
+    "徒步": "Hike",
+    "远足": "Hike",
+    "划船": "Rowing",
+    "瑜伽": "Yoga",
+    "高山滑雪": "Alpine Ski",
+    "越野滑雪": "Nordic Ski",
+    "单板滑雪": "Snowboard",
+    "力量训练": "WeightTraining",
+    "举重训练": "WeightTraining",
+    "混合健身": "Crossfit",
+    "网球": "Tennis",
+    "乒乓球": "TableTennis",
+    "羽毛球": "Badminton",
+    "壁球": "Squash",
+    "墙球": "Racquetball",
+    "匹克球": "Pickleball",
+    "通勤骑行": "Commuting ride",
+    "室内骑行": "Indoor ride",
+    "风帆冲浪": "Windsurf",
+    "帆板冲浪": "Windsurf",
+    "立式桨板": "Stand Up Paddling",
+    "桨板冲浪": "Stand Up Paddling",
+    "冲浪": "Surfing",
+    "田径跑": "Track Run",
+    "跑道跑": "Track Run",
+    "电动自行车骑行": "E-Bike Ride",
+    "电动山地自行车骑行": "E-Mountain Bike Ride",
+    "滑冰": "Ice Skate",
+    "足球": "Soccer",
+    "板式网球": "Padel",
+    "跑步机": "Treadmill",
+    "皮划艇": "Kayaking",
+    "帆船": "Sail",
+    "雪鞋健行": "Snowshoe",
+    "轮滑": "InlineSkate",
+    "高强度间歇训练": "HIIT",
+    "跳绳": "Jump Rope",
+}
+
+
+def normalize_strava_csv_row(row: dict[Any, Any]) -> dict[Any, Any]:
+    """Normalize localized Strava CSV row headers to canonical English names.
+
+    English rows pass through unchanged. When both a canonical English header
+    and a localized alias appear in the same row, the canonical English value
+    takes precedence.
+
+    Args:
+        row: A single CSV row dictionary produced by ``csv.DictReader``.
+
+    Returns:
+        A row dictionary with known localized header keys mapped to their
+        canonical English names.
+    """
+    if not any(key in STRAVA_CSV_HEADER_ALIASES for key in row):
+        return row
+    normalized: dict[Any, Any] = {}
+    for key, value in row.items():
+        canonical = STRAVA_CSV_HEADER_ALIASES.get(key, key)
+        if canonical == key:
+            normalized[canonical] = value
+        else:
+            normalized.setdefault(canonical, value)
+    return normalized
+
+
+def normalize_strava_activity_type(activity_type: Any) -> Any:
+    """Map a localized Strava activity type label to its canonical English name.
+
+    English labels, unknown values, and non-string values pass through
+    unchanged.
+
+    Args:
+        activity_type: Raw ``Activity Type`` value from a Strava CSV row.
+
+    Returns:
+        Canonical English activity type label if known, otherwise the original
+        value.
+    """
+    if not isinstance(activity_type, str):
+        return activity_type
+    return STRAVA_ACTIVITY_TYPE_ALIASES.get(activity_type.strip(), activity_type)

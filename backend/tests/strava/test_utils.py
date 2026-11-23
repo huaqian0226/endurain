@@ -235,3 +235,28 @@ class TestRefreshUserStravaToken:
         monkeypatch.setattr(strava_utils, "create_strava_client", Mock(return_value=client))
 
         strava_utils.refresh_user_strava_token(1)  # must not raise
+
+
+class TestNormalizeStravaCsvRow:
+    """Header alias normalization for localized Strava CSV exports."""
+
+    def test_english_row_passes_through_unchanged(self):
+        row = {"Bike Name": "Roadster", "Bike Brand": "Trek", "Bike Model": "Emonda"}
+
+        result = strava_utils.normalize_strava_csv_row(row)
+
+        assert result is row
+
+    def test_canonical_english_key_wins_over_localized_alias_in_either_order(self):
+        english_first = {"Bike Name": "English", "自行车名": "Chinese"}
+        chinese_first = {"自行车名": "Chinese", "Bike Name": "English"}
+
+        assert strava_utils.normalize_strava_csv_row(english_first) == {"Bike Name": "English"}
+        assert strava_utils.normalize_strava_csv_row(chinese_first) == {"Bike Name": "English"}
+
+    def test_tolerates_dictreader_none_extra_column_key(self):
+        row = {"活动 ID": "100", None: ["overflow"]}
+
+        result = strava_utils.normalize_strava_csv_row(row)
+
+        assert result == {"Activity ID": "100", None: ["overflow"]}

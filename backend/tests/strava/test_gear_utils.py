@@ -169,3 +169,116 @@ def test_shoe_transform_empty_string_name(monkeypatch):
     gears = gear_utils.transform_csv_shoe_gear_to_schema_gear(shoes_list, 1, Mock())
     assert len(gears) == 1
     assert gears[0].nickname == "Unnamed Shoe 1"
+
+
+class TestChineseLocalizedGearCsv:
+    """Chinese-localized Strava bikes.csv and shoes.csv imports."""
+
+    def test_chinese_bikes_csv_normalizes_headers_and_transforms(self, tmp_path):
+        bikes_file = tmp_path / "bikes.csv"
+        bikes_file.write_text(
+            "\ufeff自行车名,自行车品牌,自行车型号,自行车默认的运动类型\n"
+            '青风公路车,捷安特,TCR Advanced,""\n'
+            'Commuter-ZH,Merida,Scultura,"骑行"\n',
+            encoding="utf-8",
+        )
+
+        bikes = gear_utils.iterate_over_bikes_csv(str(bikes_file))
+
+        assert list(bikes) == ["青风公路车", "Commuter-ZH"]
+        assert bikes["青风公路车"] == {
+            "Bike Name": "青风公路车",
+            "Bike Brand": "捷安特",
+            "Bike Model": "TCR Advanced",
+            "Bike Default Sport Types": "",
+        }
+
+        gears = gear_utils.transform_csv_bike_gear_to_schema_gear(bikes, 9)
+        assert [(g.nickname, g.brand, g.model) for g in gears] == [
+            ("青风公路车", "捷安特", "TCR Advanced"),
+            ("Commuter-ZH", "Merida", "Scultura"),
+        ]
+
+    def test_chinese_shoes_csv_normalizes_headers_and_handles_blank_name(self, tmp_path, monkeypatch):
+        monkeypatch.setattr(gear_utils.core_config, "STRAVA_BULK_IMPORT_SHOES_UNNAMED_SHOE", "Unnamed Shoe ")
+        monkeypatch.setattr(gear_utils.gears_crud, "get_gear_user_by_nickname", lambda uid, name, db: None)
+        monkeypatch.setattr(gear_utils, "logger", Mock())
+
+        shoes_file = tmp_path / "shoes.csv"
+        shoes_file.write_text(
+            "\ufeff鞋名,鞋品牌,鞋型号,鞋子默认的运动类型\n飞马跑鞋,耐克,Pegasus 41,跑步\n,亚瑟士,Kayano,\n",
+            encoding="utf-8",
+        )
+
+        shoes = gear_utils.iterate_over_shoes_csv(str(shoes_file))
+
+        assert shoes == [
+            {
+                "Shoe Name": "飞马跑鞋",
+                "Shoe Brand": "耐克",
+                "Shoe Model": "Pegasus 41",
+                "Shoe Default Sport Types": "跑步",
+            },
+            {
+                "Shoe Name": "",
+                "Shoe Brand": "亚瑟士",
+                "Shoe Model": "Kayano",
+                "Shoe Default Sport Types": "",
+            },
+        ]
+
+        gears = gear_utils.transform_csv_shoe_gear_to_schema_gear(shoes, 9, Mock())
+        assert [(g.nickname, g.brand, g.model) for g in gears] == [
+            ("飞马跑鞋", "耐克", "Pegasus 41"),
+            ("Unnamed Shoe 1", "亚瑟士", "Kayano"),
+        ]
+
+    def test_direct_transform_accepts_chinese_keyed_rows(self):
+        bike_gears = gear_utils.transform_csv_bike_gear_to_schema_gear(
+            {"城市车": {"自行车品牌": " 迪卡侬 ", "自行车型号": " Triban "}},
+            5,
+        )
+        assert [(g.nickname, g.brand, g.model) for g in bike_gears] == [("城市车", "迪卡侬", "Triban")]
+
+        shoe_gears = gear_utils.transform_csv_shoe_gear_to_schema_gear(
+            [{"鞋名": " 慢跑鞋 ", "鞋品牌": " 美津浓 ", "鞋型号": " Rider "}],
+            5,
+            Mock(),
+        )
+        assert [(g.nickname, g.brand, g.model) for g in shoe_gears] == [("慢跑鞋", "美津浓", "Rider")]
+
+    def test_missing_bike_headers_keeps_424_detail_and_logs_chinese_names(self, tmp_path, monkeypatch):
+        from fastapi import HTTPException
+
+        logger = Mock()
+        monkeypatch.setattr(gear_utils, "logger", logger)
+        bikes_file = tmp_path / "bikes.csv"
+        bikes_file.write_text("名称,品牌\n测试车,某品牌\n", encoding="utf-8")
+
+        with pytest.raises(HTTPException) as exc_info:
+            gear_utils.iterate_over_bikes_csv(str(bikes_file))
+
+        assert exc_info.value.status_code == 424
+        assert exc_info.value.detail == "Invalid file. Proper headers not found in Strava bikes CSV file."
+        log_text = " ".join(str(call.args[0]) for call in logger.info.call_args_list)
+        assert "自行车名" in log_text
+        assert "自行车品牌" in log_text
+        assert "自行车型号" in log_text
+
+    def test_missing_shoe_headers_keeps_424_detail_and_logs_chinese_names(self, tmp_path, monkeypatch):
+        from fastapi import HTTPException
+
+        logger = Mock()
+        monkeypatch.setattr(gear_utils, "logger", logger)
+        shoes_file = tmp_path / "shoes.csv"
+        shoes_file.write_text("名称,品牌\n测试鞋,某品牌\n", encoding="utf-8")
+
+        with pytest.raises(HTTPException) as exc_info:
+            gear_utils.iterate_over_shoes_csv(str(shoes_file))
+
+        assert exc_info.value.status_code == 424
+        assert exc_info.value.detail == "Invalid file. Proper headers not found in Strava shoes CSV file."
+        log_text = " ".join(str(call.args[0]) for call in logger.info.call_args_list)
+        assert "鞋名" in log_text
+        assert "鞋品牌" in log_text
+        assert "鞋型号" in log_text

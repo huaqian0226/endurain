@@ -16,7 +16,9 @@ def _upload(content: bytes) -> UploadFile:
 
 
 BIKES = b"Bike Name,Bike Brand,Bike Model\nCommuter,Trek,Domane\n"
+BIKES_ZH = '自行车名,自行车品牌,自行车型号,自行车默认的运动类型\n测试公路车,捷安特,TCR,""\n'.encode()
 SHOES = b"Shoe Name,Shoe Brand,Shoe Model\nPegasus,Nike,Pegasus\n"
+SHOES_ZH = '鞋名,鞋品牌,鞋型号,鞋子默认的运动类型\n测试跑鞋,耐克,Pegasus,""\n'.encode()
 
 
 class TestImportBikes:
@@ -29,6 +31,17 @@ class TestImportBikes:
 
         gears, user_id, passed_db = create.call_args.args
         assert [g.nickname for g in gears] == ["Commuter"]
+        assert (user_id, passed_db) == (7, db)
+
+    def test_creates_the_listed_chinese_bikes_for_the_caller(self):
+        db = MagicMock()
+        with patch.object(strava_router.gears_crud, "create_multiple_gears") as create:
+            strava_router.import_bikes_from_strava_export(
+                request=MagicMock(), file=_upload(BIKES_ZH), token_user_id=7, db=db
+            )
+
+        gears, user_id, passed_db = create.call_args.args
+        assert [(g.nickname, g.brand, g.model) for g in gears] == [("测试公路车", "捷安特", "TCR")]
         assert (user_id, passed_db) == (7, db)
 
     def test_the_temp_file_is_removed_whether_or_not_it_parses(self):
@@ -70,3 +83,14 @@ class TestImportShoes:
             )
 
         create.assert_called_once_with(["shoe"], 7, db)
+
+    def test_creates_the_listed_chinese_shoes_for_the_caller(self):
+        db = MagicMock()
+        with patch.object(strava_router.gears_crud, "create_multiple_gears") as create:
+            strava_router.import_shoes_from_strava_export(
+                request=MagicMock(), file=_upload(SHOES_ZH), token_user_id=7, db=db
+            )
+
+        gears, user_id, passed_db = create.call_args.args
+        assert [(g.nickname, g.brand, g.model) for g in gears] == [("测试跑鞋", "耐克", "Pegasus")]
+        assert (user_id, passed_db) == (7, db)

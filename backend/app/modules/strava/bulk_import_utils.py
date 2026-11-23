@@ -17,6 +17,7 @@ import modules.activities.activity.schema as activity_schema
 import modules.activities.activity_ingestion.integration_service as activity_ingestion_integration
 import modules.activities.activity_media.integration_service as activity_media_integration
 import modules.gears.gear.crud as gears_crud
+import modules.strava.utils as strava_utils
 
 logger = core_logger.get_logger(__name__)
 
@@ -34,6 +35,46 @@ _STRAVA_ACTIVITIES_HEADERS = {
     "Activity Type",
 }
 
+_STRAVA_ACTIVITY_DATE_FORMATS: tuple[str, ...] = (
+    "%b %d, %Y, %I:%M:%S %p",
+    "%Y年%m月%d日 %H:%M:%S",
+)
+
+
+def _format_missing_headers(missing_headers: set[str]) -> str:
+    """Format missing canonical header names together with their Chinese aliases."""
+    parts = []
+    for header in sorted(missing_headers):
+        chinese = strava_utils.STRAVA_CSV_CHINESE_HEADER_BY_CANONICAL.get(header)
+        parts.append(f"{header} ({chinese})" if chinese else header)
+    return ", ".join(parts)
+
+
+def parse_strava_activity_date(raw_date: Any) -> datetime | None:
+    """Parse a Strava ``activities.csv`` timestamp as a UTC-aware datetime.
+
+    Supports both the English Strava export format (``Oct 21, 2023, 8:13:28 AM``)
+    and the Chinese Strava export format (``2026年9月10日 09:27:12``), including
+    zero-padded and unpadded numeric fields.
+
+    Args:
+        raw_date: Raw ``Activity Date`` string from the CSV row.
+
+    Returns:
+        A UTC-aware ``datetime`` when parsed, or ``None`` if empty or invalid.
+    """
+    if not isinstance(raw_date, str):
+        return None
+    cleaned = raw_date.strip()
+    if not cleaned:
+        return None
+    for fmt in _STRAVA_ACTIVITY_DATE_FORMATS:
+        try:
+            return datetime.strptime(cleaned, fmt).replace(tzinfo=UTC)
+        except ValueError:
+            continue
+    return None
+
 
 def parse_activities_manifest(manifest_path: str) -> dict | None:
     """
@@ -50,15 +91,17 @@ def parse_activities_manifest(manifest_path: str) -> dict | None:
     try:
         strava_activities_dict = {}
         for row in core_text_imports.read_bounded_csv(manifest_path):
+            row = strava_utils.normalize_strava_csv_row(row)
             # Check to see if file has headers that will be used during parsing of the file.
             missing_headers = _STRAVA_ACTIVITIES_HEADERS - row.keys()
             if missing_headers:
                 logger.error(
                     "Aborting Strava bulk activities import: Proper headers not found in "
-                    f"{strava_activities_file_name}. Missing: {', '.join(sorted(missing_headers))}.",
+                    f"{strava_activities_file_name}. Missing: {_format_missing_headers(missing_headers)}.",
                     extra=core_logger.context(console=True),
                 )
                 return None
+            row["Activity Type"] = strava_utils.normalize_strava_activity_type(row["Activity Type"])
             _, strava_act_file_name = os.path.split(row["Filename"])  # strips path, returns filename with extension.
             strava_activities_dict[strava_act_file_name] = row
         logger.info(
@@ -132,16 +175,16 @@ def build_metadata_dict(
         # Strava bulk import notes:
         #     Importing Strava activity id to the activity's "strava_activity_id" field results in Endurain thinking the activity is linked to Strava via the Strava active linking mechanism.
         #     Strava media will be worked on after the activity has been created, so it is not dealt with here.
-        strava_activity_metadata["name"] = strava_activities[file_base_name]["Activity Name"]
-        strava_activity_metadata["description"] = strava_activities[file_base_name]["Activity Description"]
-        strava_activity_metadata["activity type"] = strava_activities[file_base_name]["Activity Type"]
+        row = strava_utils.normalize_strava_csv_row(strava_activities[file_base_name])
+        strava_activity_metadata["name"] = row["Activity Name"]
+        strava_activity_metadata["description"] = row["Activity Description"]
+        strava_activity_metadata["activity type"] = strava_utils.normalize_strava_activity_type(row["Activity Type"])
 
         # Needed for checking for duplicates within multi-file .fit file Strava bulk imports
-        strava_activity_metadata["activity date"] = strava_activities[file_base_name]["Activity Date"]
+        strava_activity_metadata["activity date"] = row["Activity Date"]
 
         # Gear work
-        activity_gear = None
-        activity_gear = strava_activities[file_base_name]["Activity Gear"]
+        activity_gear = row["Activity Gear"]
         if activity_gear and activity_gear is not None:
             if activity_gear.replace("+", " ").strip() in users_existing_gear_nickname_to_id:
                 # Gear names in Endurain have all +'s swapped to spaces, thus need to do this here as well.
@@ -194,7 +237,8 @@ def build_import_dictionary(
     import_dict: dict[str, Any] = {}
     if is_strava_bulk_import:
         import_dict = activity_ingestion_integration.build_import_record(import_initiated_time, "Strava bulk import")
-        activity_id_value = strava_activities[file_base_name].get("Activity ID", "")
+        row = strava_utils.normalize_strava_csv_row(strava_activities[file_base_name])
+        activity_id_value = row.get("Activity ID", "")
         if activity_id_value:
             try:
                 import_dict["strava_activity_id"] = int(activity_id_value)
@@ -231,10 +275,14 @@ def does_activity_start_time_match_the_data_in_strava_activities_csv(
     endurain_parsed_file_start_date = core_timezone.to_utc_aware(activity.start_time)
     if endurain_parsed_file_start_date is None:
         return False
-    strava_csv_start_date = datetime.strptime(activity_metadata_dict["activity date"], "%b %d, %Y, %-I:%-M:%-S %p")
-    # Ensure both are tz-aware (or both naive) for comparison
-    if strava_csv_start_date.tzinfo is None:
-        strava_csv_start_date = strava_csv_start_date.replace(tzinfo=UTC)
+    raw_date = activity_metadata_dict.get("activity date") if isinstance(activity_metadata_dict, dict) else None
+    strava_csv_start_date = parse_strava_activity_date(raw_date)
+    if strava_csv_start_date is None:
+        logger.warning(
+            "Bulk file import: Could not parse Strava activities.csv activity date; skipping start-time match.",
+            extra=core_logger.context(console=True),
+        )
+        return False
     return endurain_parsed_file_start_date == strava_csv_start_date
 
 
@@ -271,6 +319,7 @@ def import_media_from_strava_bulk_export(
     row = strava_activities.get(file_base_name)
     if not row:
         return
+    row = strava_utils.normalize_strava_csv_row(row)
     media_string = (row.get("Media") or "").strip()
     if not media_string:
         logger.info(
