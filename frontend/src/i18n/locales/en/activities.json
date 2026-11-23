@@ -290,5 +290,27 @@
     "confirmed": "I confirm this activity’s equipment selection",
     "confirmedState": "Confirmed, including an empty selection.",
     "unknownState": "Unconfirmed: equipment use remains unknown."
+  },
+  "intervalsSync": {
+    "title": "intervals.icu Sync",
+    "lastSync": "Last sync: {time} · {result}",
+    "noRecord": "No sync records yet",
+    "scheduleHint": "Auto-sync: daily at 22:00",
+    "syncNow": "Sync now",
+    "syncing": "Syncing…",
+    "feedback": {
+      "requested": "Sync request sent, usually completes in 1–2 minutes",
+      "conflictRunning": "Sync already in progress",
+      "conflictRecent": "Sync was just requested, please wait",
+      "requestFailed": "Request failed"
+    },
+    "results": {
+      "ok": "Success",
+      "partial": "Partially failed, will retry next time",
+      "missingKey": "Missing key in Keychain",
+      "authRejected": "Key rejected",
+      "listFailed": "Could not connect to intervals.icu",
+      "error": "Error"
+    }
   }
 }

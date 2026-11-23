@@ -11,6 +11,7 @@ import type {
 } from '@/features/activities/services/activities'
 
 import ActivityListItem from '@/features/activities/components/ActivityListItem.vue'
+import IntervalsSyncCard from '@/features/activities/components/IntervalsSyncCard.vue'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -216,7 +217,7 @@ useRouteQueryReplacement(activitiesQueryState)
     -->
     <div class="grid gap-3 lg:grid-cols-[18rem_minmax(0,1fr)] lg:items-start">
       <!-- Controls rail: name search + type + date range filters. -->
-      <aside class="lg:sticky lg:top-6">
+      <aside class="flex flex-col gap-3 lg:sticky lg:top-6">
         <Card class="flex flex-col gap-3">
           <div class="relative">
             <Search
@@ -272,6 +273,8 @@ useRouteQueryReplacement(activitiesQueryState)
             {{ t('activities.list.filters.clear') }}
           </Button>
         </Card>
+
+        <IntervalsSyncCard />
       </aside>
 
       <!-- Main panel: result count + sort header, then the list and pager. -->

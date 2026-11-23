@@ -70,6 +70,11 @@ def _registered_limits(func) -> list[str]:
 # sensitive endpoint cannot be added without also being asserted here.
 _TIERED_ENDPOINTS = [
     pytest.param(workbench_router.map_vehicle, core_rate_limit.WRITE, id="workbench-map-vehicle"),
+    pytest.param(
+        workbench_router.request_intervals_sync,
+        core_rate_limit.WRITE,
+        id="workbench-request-intervals-sync",
+    ),
     pytest.param(auth_router.login_for_access_token, core_rate_limit.SENSITIVE, id="login"),
     pytest.param(auth_router.verify_mfa_and_login, core_rate_limit.SENSITIVE, id="mfa-verify"),
     pytest.param(auth_router.refresh_token, core_rate_limit.WRITE, id="token-refresh"),

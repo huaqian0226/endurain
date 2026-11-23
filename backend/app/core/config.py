@@ -37,7 +37,7 @@ import core.network as core_network
 logger = core_logger.get_logger(__name__)
 
 # Pure constants — neither env-driven nor derived from settings.
-API_VERSION = "v0.20.2-workbench.2"
+API_VERSION = "v0.20.2+workbench.3"
 LICENSE_NAME = "GNU Affero General Public License v3.0 or later"
 LICENSE_IDENTIFIER = "AGPL-3.0-or-later"
 LICENSE_URL = "https://spdx.org/licenses/AGPL-3.0-or-later.html"
@@ -108,6 +108,8 @@ class Settings(BaseSettings):
     WORKBENCH_JIADANG_TOKEN: str | None = None
     WORKBENCH_JIADANG_USER_ID: int | None = None
     WORKBENCH_EXCLUDED_ACTIVITY_IDS: list[int] = []
+    WORKBENCH_INTERVALS_SYNC_DIR: str | None = None
+    WORKBENCH_INTERVALS_SYNC_USER_ID: int | None = None
 
     # --- Logging / environment ---
     LOG_LEVEL: str = "info"

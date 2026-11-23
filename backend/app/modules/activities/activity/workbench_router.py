@@ -4,7 +4,7 @@ from collections.abc import Callable
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Security
+from fastapi import APIRouter, Depends, Request, Security, status
 from sqlalchemy.orm import Session
 
 import core.database as database
@@ -72,3 +72,30 @@ def read_mapping(
 ) -> schema.VehicleMappingRead:
     """Read an editable mapping revision owned by the authenticated principal."""
     return service.read_mapping(user_id, str(vehicle_uuid), db)
+
+
+@router.get(
+    "/intervals-sync",
+    response_model=schema.IntervalsSyncDisabledRead | schema.IntervalsSyncStatusRead,
+)
+def read_intervals_sync(
+    _scope: Annotated[Callable, Security(auth.check_auth_scopes, scopes=["activities:read"])],
+    user_id: Annotated[int, Depends(auth.get_user_id_from_auth)],
+) -> schema.IntervalsSyncDisabledRead | schema.IntervalsSyncStatusRead:
+    """Read whitelisted intervals.icu sync status for the configured owner."""
+    return service.read_intervals_sync(user_id)
+
+
+@router.post(
+    "/intervals-sync/requests",
+    status_code=status.HTTP_202_ACCEPTED,
+    response_model=schema.IntervalsSyncRequestAcceptedRead,
+)
+@rate_limit.limiter.limit(rate_limit.WRITE)
+def request_intervals_sync(
+    request: Request,
+    _scope: Annotated[Callable, Security(auth.check_auth_scopes, scopes=["activities:upload"])],
+    user_id: Annotated[int, Depends(auth.get_user_id_from_auth)],
+) -> schema.IntervalsSyncRequestAcceptedRead:
+    """Queue a manual intervals.icu sync request on the host bridge."""
+    return service.request_intervals_sync(user_id)

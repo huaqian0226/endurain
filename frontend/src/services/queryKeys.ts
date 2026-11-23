@@ -138,6 +138,8 @@ export const queryKeys = {
    */
   activities: {
     equipmentCandidates: () => ['activities', 'equipment-candidates'] as const,
+    /** Host intervals.icu sync bridge status for the configured owner. */
+    intervalsSync: () => ['activities', 'intervals-sync'] as const,
     /** Broad prefix; invalidating this cascades to every activities query. */
     all: () => ['activities'] as const,
     lists: () => ['activities', 'list'] as const,

@@ -156,7 +156,7 @@ def test_about_reports_workbench_version(http):
     client, _ = http
     response = client.get("/api/v1/about")
     assert response.status_code == 200
-    assert response.json()["version"] == "v0.20.2-workbench.2"
+    assert response.json()["version"] == "v0.20.2+workbench.3"
 
 
 @pytest.mark.parametrize(

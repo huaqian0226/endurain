@@ -290,5 +290,27 @@
     "confirmed": "我已确认本次活动的装备选择",
     "confirmedState": "已确认，空选择表示明确未带额外装备。",
     "unknownState": "未确认：实际装备保持未知。"
+  },
+  "intervalsSync": {
+    "title": "intervals.icu 同步",
+    "lastSync": "上次同步：{time} · {result}",
+    "noRecord": "还没有同步记录",
+    "scheduleHint": "自动同步：每天 22:00",
+    "syncNow": "立即同步",
+    "syncing": "同步中…",
+    "feedback": {
+      "requested": "已发出同步请求，一般一两分钟内完成",
+      "conflictRunning": "正在同步中",
+      "conflictRecent": "刚刚已请求，请稍等",
+      "requestFailed": "请求失败"
+    },
+    "results": {
+      "ok": "成功",
+      "partial": "部分失败，下次会重试",
+      "missingKey": "钥匙串里缺少 key",
+      "authRejected": "key 被拒绝",
+      "listFailed": "连不上 intervals.icu",
+      "error": "出错了"
+    }
   }
 }

@@ -139,3 +139,45 @@ class AssetUsageRead(BaseModel):
     activities: list[WorkbenchActivity]
     excluded: WorkbenchExcluded
     coverage: WorkbenchCoverage
+
+
+IntervalsSyncState = Literal["idle", "running", "unknown"]
+IntervalsSyncResult = Literal["ok", "partial", "missing_key", "auth_rejected", "list_failed", "error"]
+IntervalsSyncTrigger = Literal["manual", "scheduled"]
+
+
+class IntervalsSyncDisabledRead(BaseModel):
+    """Response when intervals.icu sync is disabled or not visible to the caller."""
+
+    enabled: Literal[False] = False
+
+
+class IntervalsSyncCountsRead(BaseModel):
+    """Whitelisted integer activity counters from the latest intervals.icu sync run."""
+
+    done: int
+    failed: int
+    gave_up: int
+    skipped: int
+    pending: int
+
+
+class IntervalsSyncStatusRead(BaseModel):
+    """Whitelisted status summary of the host intervals.icu sync bridge."""
+
+    enabled: Literal[True] = True
+    state: IntervalsSyncState
+    last_started_at: datetime | None = None
+    last_finished_at: datetime | None = None
+    last_result: IntervalsSyncResult | None = None
+    counts: IntervalsSyncCountsRead | None = None
+    trigger: IntervalsSyncTrigger | None = None
+    last_requested_at: datetime | None = None
+    request_pending: bool = False
+
+
+class IntervalsSyncRequestAcceptedRead(BaseModel):
+    """Confirmation that a manual intervals.icu sync request was written to the bridge."""
+
+    accepted: Literal[True] = True
+    requested_at: datetime
