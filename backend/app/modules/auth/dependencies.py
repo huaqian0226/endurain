@@ -11,7 +11,7 @@ the principal caching helper ``_resolve_and_cache_principal``, and functions
 whose implementations are identical in ``modules.auth._internal.internal_dependencies`` are
 re-exported from that module.  Only functions with a different FastAPI
 dependency signature (using ``IdentityService`` instead of ``TokenManager``),
-plus the unified ``check_auth_scopes``, are defined here.
+plus the unified ``check_auth_scopes`` and ``check_auth_any_scope``, are defined here.
 """
 
 from __future__ import annotations
@@ -110,9 +110,42 @@ def check_auth_scopes(
         )
 
 
+def check_auth_any_scope(
+    auth: Annotated[
+        AuthContext,
+        Depends(validate_access_token_or_api_key),
+    ],
+    security_scopes: SecurityScopes,
+) -> None:
+    """Validate that a unified AuthContext holds at least one required scope.
+
+    Use this in place of :func:`check_auth_scopes` on endpoints that accept
+    both JWT and API key auth and allow any one of the declared scopes. The
+    underlying ``AuthContext`` is resolved by
+    :func:`validate_access_token_or_api_key`, which goes through
+    ``IdentityService`` (asserting the user exists and is active, and
+    including unexpired temporary scopes on API keys).
+
+    Args:
+        auth: Resolved AuthContext from validate_access_token_or_api_key.
+        security_scopes: Accepted scopes for the endpoint (any one suffices).
+
+    Raises:
+        HTTPException: 403 if none of the accepted scopes is present in the
+            AuthContext.
+    """
+    if security_scopes.scopes and not (set(security_scopes.scopes) & set(auth.scopes)):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=(f"Unauthorized Access - Missing permissions: any of {sorted(security_scopes.scopes)}"),
+            headers={"WWW-Authenticate": (f'Bearer scope="{security_scopes.scope_str}"')},
+        )
+
+
 __all__ = [
     "AuthContext",
     "StepUpStore",
+    "check_auth_any_scope",
     "check_auth_scopes",
     "check_scopes",
     "get_access_token",

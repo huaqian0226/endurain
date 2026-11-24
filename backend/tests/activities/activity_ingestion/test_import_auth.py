@@ -252,7 +252,7 @@ class TestBulkImportFolderAuth:
 
 
 class TestIngestionJobPollAuth:
-    """GET /api/v1/activities/ingestion-jobs/{job_id} requires activities:read and enforces owner isolation."""
+    """GET /api/v1/activities/ingestion-jobs/{job_id} accepts activities:read or activities:upload."""
 
     def test_jwt_base_temp_expired_and_ownership(self, env, monkeypatch):
         client, _db, tokens, make_key, job1_id, job2_id = env
@@ -272,11 +272,23 @@ class TestIngestionJobPollAuth:
         assert own_jwt.json()["id"] == job1_id
         assert client.get(path2, headers=_jwt_headers(tokens[1])).status_code == 404
 
-        # API key without activities:read -> 403
-        _, upload_only = make_key(scopes=["activities:upload"])
-        assert client.get(path1, headers={"X-API-Key": upload_only}).status_code == 403
+        # API key with neither activities:read nor activities:upload -> 403
+        _, gears_only = make_key(user_id=1, scopes=["gears:read"])
+        assert client.get(path1, headers={"X-API-Key": gears_only}).status_code == 403
+        _, write_only = make_key(user_id=1, scopes=["activities:write"])
+        assert client.get(path1, headers={"X-API-Key": write_only}).status_code == 403
 
-        # API key with base activities:read -> 200 for own job, 404 for other user's job
+        # API key with base activities:upload only -> 200 for own job, 404 for another user's job
+        _, user1_upload = make_key(user_id=1, scopes=["activities:upload"])
+        _, user2_upload = make_key(user_id=2, scopes=["activities:upload"])
+        resp_upload = client.get(path1, headers={"X-API-Key": user1_upload})
+        assert resp_upload.status_code == 200, resp_upload.text
+        assert resp_upload.json()["id"] == job1_id
+        assert client.get(path2, headers={"X-API-Key": user1_upload}).status_code == 404
+        assert client.get(path1, headers={"X-API-Key": user2_upload}).status_code == 404
+        assert client.get(path2, headers={"X-API-Key": user2_upload}).status_code == 200
+
+        # API key with base activities:read only -> 200 for own job, 404 for another user's job
         _, user1_read = make_key(user_id=1, scopes=["activities:read"])
         _, user2_read = make_key(user_id=2, scopes=["activities:read"])
         resp = client.get(path1, headers={"X-API-Key": user1_read})
@@ -286,7 +298,7 @@ class TestIngestionJobPollAuth:
         assert client.get(path1, headers={"X-API-Key": user2_read}).status_code == 404
         assert client.get(path2, headers={"X-API-Key": user2_read}).status_code == 200
 
-        # API key with unexpired temp activities:read -> 200, after expiry -> 403
+        # API key with unexpired temp activities:read (only source) -> 200, after expiry -> 403
         _, temp_read = make_key(
             user_id=1,
             scopes=["gears:read"],
@@ -294,8 +306,19 @@ class TestIngestionJobPollAuth:
             temp_scopes_expires_at=t0 + timedelta(minutes=20),
         )
         assert client.get(path1, headers={"X-API-Key": temp_read}).status_code == 200
+
+        # API key with unexpired temp activities:upload (only source) -> 200, after expiry -> 403
+        _, temp_upload = make_key(
+            user_id=1,
+            scopes=["gears:read"],
+            temp_scopes=["activities:upload"],
+            temp_scopes_expires_at=t0 + timedelta(minutes=20),
+        )
+        assert client.get(path1, headers={"X-API-Key": temp_upload}).status_code == 200
+
         current_time[0] = t0 + timedelta(minutes=20)
         assert client.get(path1, headers={"X-API-Key": temp_read}).status_code == 403
+        assert client.get(path1, headers={"X-API-Key": temp_upload}).status_code == 403
 
 
 class TestStravaGearImportAuth:

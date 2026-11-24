@@ -469,6 +469,46 @@ class TestCheckAuthScopes:
         assert exc.value.status_code == 403
 
 
+class TestCheckAuthAnyScope:
+    """Any-of scope validation on unified AuthContext."""
+
+    def _make_auth_ctx(
+        self,
+        scopes: list[str],
+        auth_type: str = "api_key",
+        user_id: int = 1,
+    ) -> auth_security.AuthContext:
+        return auth_security.AuthContext(user_id=user_id, scopes=scopes, auth_type=auth_type)
+
+    def test_any_single_matching_scope_passes(self):
+        """Holding any one of the accepted scopes passes."""
+        security_scopes = SecurityScopes(scopes=["activities:read", "activities:upload"])
+
+        auth_dependencies.check_auth_any_scope(self._make_auth_ctx(["activities:read"]), security_scopes)
+        auth_dependencies.check_auth_any_scope(self._make_auth_ctx(["activities:upload"]), security_scopes)
+        auth_dependencies.check_auth_any_scope(
+            self._make_auth_ctx(["activities:read", "activities:upload"], auth_type="jwt"),
+            security_scopes,
+        )
+
+    def test_none_of_accepted_scopes_raises_403(self):
+        """Missing all accepted scopes raises 403."""
+        ctx = self._make_auth_ctx(["activities:write", "gears:read"])
+        security_scopes = SecurityScopes(scopes=["activities:read", "activities:upload"])
+
+        with pytest.raises(HTTPException) as exc:
+            auth_dependencies.check_auth_any_scope(ctx, security_scopes)
+        assert exc.value.status_code == 403
+        assert "Missing permissions" in exc.value.detail
+
+    def test_empty_accepted_scopes_passes(self):
+        """No required scopes passes unconditionally."""
+        ctx = self._make_auth_ctx([])
+        security_scopes = SecurityScopes(scopes=[])
+
+        auth_dependencies.check_auth_any_scope(ctx, security_scopes)
+
+
 # ---------------------------------------------------------------------------
 # AuthContext identity
 # ---------------------------------------------------------------------------

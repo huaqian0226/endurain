@@ -419,6 +419,7 @@ def fast_api_app(password_hasher, token_manager, mock_db) -> FastAPI:
         )
         app.dependency_overrides[auth_dependencies.get_user_id_from_auth] = _mock_get_sub_from_access_token
         app.dependency_overrides[auth_dependencies.check_auth_scopes] = _mock_check_scopes
+        app.dependency_overrides[auth_dependencies.check_auth_any_scope] = _mock_check_scopes
 
     # Generic overrides
     _override_if_exists(

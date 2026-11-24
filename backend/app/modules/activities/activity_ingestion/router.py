@@ -124,8 +124,8 @@ def read_activity_ingestion_job(
     _check_scopes: Annotated[
         Callable,
         Security(
-            auth_dependencies.check_auth_scopes,
-            scopes=["activities:read"],
+            auth_dependencies.check_auth_any_scope,
+            scopes=["activities:read", "activities:upload"],
         ),
     ],
     db: Annotated[

@@ -14,7 +14,7 @@ Exports:
     - JWT: ``TokenManager``, ``TokenType``, ``get_token_manager``
     - Security dependencies: ``AuthContext``, ``oauth2_scheme``,
       ``validate_access_token_expiration``, ``validate_refresh_token``,
-      ``check_auth_scopes``,
+      ``check_auth_any_scope``, ``check_auth_scopes``,
       ``get_sub_from_access_token``, ``get_sid_from_access_token``,
       ``get_sub_from_refresh_token``, ``get_sid_from_refresh_token``,
       ``validate_access_token_or_api_key``,
@@ -69,7 +69,7 @@ from ._internal.security_stores import (
     get_step_up_attempts,
 )
 from ._internal.token_manager import TokenManager, TokenType, get_token_manager
-from .dependencies import check_auth_scopes
+from .dependencies import check_auth_any_scope, check_auth_scopes
 from .schema import (
     LoginRequest,
     LogoutResponse,
@@ -110,6 +110,7 @@ __all__ = [
     "TokenType",
     # Helpers
     "authenticate_user",
+    "check_auth_any_scope",
     "check_auth_scopes",
     "cleanup_expired_pending_mfa_logins",
     "clear_pending_mfa_for_user",
