@@ -107,7 +107,7 @@ def _gpx(name: str, points: list) -> tuple[str, int]:
     return xml, count
 
 
-def send_route(owner: int, route_id: int, trip_id: int, db: Session, call_trek: Callable) -> SendResult:
+def send_route(owner: int, route_id: int, trip_id: int, call_trek: Callable, db: Session) -> SendResult:
     """Write one tour per destination; retry against TREK's own GPX duplicate check after an interrupted response."""
     route = crud.lock_route(owner, route_id, db)
     if route is None:

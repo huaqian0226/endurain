@@ -62,4 +62,4 @@ def send_saved_route(
     trek: Annotated[Callable, Depends(dependencies.get_trek_route_tool)],
 ):
     """Send a saved route into one selected trip's Tours."""
-    return saved.send_route(user_id, route_id, trip_id, db, trek)
+    return saved.send_route(user_id, route_id, trip_id, trek, db)
