@@ -35,6 +35,7 @@ import modules.activities.activity.router as activity_router
 import modules.activities.activity.workbench_router as workbench_router
 import modules.activities.activity_ingestion.router as ingestion_router
 import modules.activities.activity_media.router as activity_media_router
+import modules.activities.saved_routes.router as route_library_router
 import modules.auth.identity_providers.public_router as idp_public_router
 import modules.auth.password_reset_tokens.router as password_reset_router
 import modules.auth.router as auth_router
@@ -69,6 +70,8 @@ def _registered_limits(func) -> list[str]:
 # source tree and fails when a decorated route is missing from it, so a new
 # sensitive endpoint cannot be added without also being asserted here.
 _TIERED_ENDPOINTS = [
+    pytest.param(route_library_router.save_activity_route, core_rate_limit.WRITE, id="workbench-save-route"),
+    pytest.param(route_library_router.send_saved_route, core_rate_limit.WRITE, id="workbench-send-route"),
     pytest.param(workbench_router.map_vehicle, core_rate_limit.WRITE, id="workbench-map-vehicle"),
     pytest.param(
         workbench_router.request_intervals_sync,

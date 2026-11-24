@@ -2,7 +2,7 @@
 import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
-import { EllipsisVertical, ImagePlus, Pencil, Trash2 } from '@lucide/vue'
+import { EllipsisVertical, ImagePlus, Pencil, Route, Trash2 } from '@lucide/vue'
 
 import type { Activity } from '@/features/activities/types'
 
@@ -23,6 +23,14 @@ import {
   useIntervalsActivityQuery,
   useRequestIntervalsDeleteMutation,
 } from '@/features/activities/composables/useIntervalsSync'
+import { FormDialog } from '@/components/ui/form-dialog'
+import { FormField } from '@/components/ui/form-field'
+import { Input } from '@/components/ui/input'
+import { HttpError } from '@/services/http'
+import {
+  saveActivityRoute,
+  supportedRouteActivities,
+} from '@/features/activities/services/savedRoutes'
 import ActivityEditDialog from '@/features/activities/components/ActivityEditDialog.vue'
 
 const props = defineProps<{
@@ -33,6 +41,36 @@ const props = defineProps<{
 const { t } = useI18n()
 const router = useRouter()
 const toasts = useToasts()
+
+const routeOpen = ref(false)
+const routeName = ref('')
+const savingRoute = ref(false)
+const routeError = ref('')
+
+function openSaveRoute(): void {
+  routeName.value = props.activity.name
+  routeError.value = ''
+  routeOpen.value = true
+}
+
+async function saveRoute(): Promise<void> {
+  if (savingRoute.value || !routeName.value.trim()) return
+  savingRoute.value = true
+  routeError.value = ''
+  try {
+    const route = await saveActivityRoute(props.activity.id, routeName.value.trim())
+    toasts.success(t('activities.routes.saved', { name: route.name }))
+    routeOpen.value = false
+  } catch (error) {
+    routeError.value = t(
+      error instanceof HttpError && error.status === 400
+        ? 'activities.routes.noGps'
+        : 'activities.routes.saveError',
+    )
+  } finally {
+    savingRoute.value = false
+  }
+}
 
 const deleteMutation = useDeleteActivityMutation()
 const deleteIntervalsMutation = useRequestIntervalsDeleteMutation()
@@ -121,6 +159,13 @@ async function confirmDelete(): Promise<void> {
         <ImagePlus class="size-4" />
         <span>{{ t('activities.media.addMedia') }}</span>
       </DropdownMenuItem>
+      <DropdownMenuItem
+        v-if="supportedRouteActivities.has(activity.activityType)"
+        @select="openSaveRoute"
+      >
+        <Route class="size-4" />
+        <span>{{ t('activities.routes.save') }}</span>
+      </DropdownMenuItem>
       <DropdownMenuItem @select="isEditOpen = true">
         <Pencil class="size-4" />
         <span>{{ t('activities.actions.edit') }}</span>
@@ -135,6 +180,28 @@ async function confirmDelete(): Promise<void> {
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenu>
+  <FormDialog
+    v-model:open="routeOpen"
+    :title="t('activities.routes.save')"
+    :submit-label="t('activities.edit.save')"
+    :cancel-label="t('activities.edit.cancel')"
+    :close-label="t('activities.edit.close')"
+    :can-submit="Boolean(routeName.trim())"
+    :submitting="savingRoute"
+    @submit="saveRoute"
+  >
+    <FormField :label="t('activities.routes.name')">
+      <template #default="{ fieldId }"
+        ><Input
+          :id="fieldId"
+          v-model="routeName"
+          :maxlength="160"
+          :disabled="savingRoute"
+          class="w-full"
+      /></template>
+    </FormField>
+    <p v-if="routeError" role="alert" class="mt-2 text-sm text-destructive">{{ routeError }}</p>
+  </FormDialog>
 
   <input ref="fileInput" type="file" accept="image/*" class="hidden" @change="onFileSelected" />
 

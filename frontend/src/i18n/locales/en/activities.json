@@ -326,5 +326,27 @@
       "failed": "Failed",
       "pending": "Pending"
     }
+  },
+  "routes": {
+    "library": "My routes",
+    "route": "Route",
+    "trip": "TREK trip",
+    "selectTrip": "Select a trip",
+    "save": "Save as route",
+    "send": "Add to TREK Tours",
+    "name": "Route name",
+    "saved": "“{name}” is in My routes.",
+    "points": "{count} GPS points",
+    "loading": "Loading routes…",
+    "empty": "Open a ride, hike or run and choose Save as route.",
+    "noTrips": "Create a trip in TREK to add a tour.",
+    "loadError": "Could not load your routes. Reopen to retry.",
+    "tripsError": "Could not load TREK trips. Reopen to retry.",
+    "added": "Added to TREK Tours.",
+    "alreadyAdded": "This tour is already in the trip.",
+    "sampled": "Transferred {count} of {total} points. The library keeps the full route.",
+    "sendError": "TREK did not confirm the transfer. Check trip permissions and retry.",
+    "noGps": "This activity needs two distinct GPS points to save a route.",
+    "saveError": "Could not save this route. Try again."
   }
 }

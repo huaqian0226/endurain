@@ -10,6 +10,7 @@ import type {
   ActivitySortOrder,
 } from '@/features/activities/services/activities'
 
+import SavedRoutesDialog from '@/features/activities/components/SavedRoutesDialog.vue'
 import ActivityListItem from '@/features/activities/components/ActivityListItem.vue'
 import IntervalsSyncCard from '@/features/activities/components/IntervalsSyncCard.vue'
 import { Button } from '@/components/ui/button'
@@ -43,6 +44,7 @@ import { presentActivityType } from '@/features/activities/utils/activityType'
 const { t } = useI18n()
 const { data: currentUser } = useCurrentUser()
 const route = useRoute()
+const routesOpen = ref(false)
 
 const units = computed(() => currentUser.value?.units ?? 'metric')
 const userId = computed(() => currentUser.value?.id ?? null)
@@ -206,7 +208,13 @@ useRouteQueryReplacement(activitiesQueryState)
 <template>
   <section class="flex flex-col gap-3">
     <header class="flex flex-col gap-1">
-      <h1 class="text-page-title">{{ t('activities.list.title') }}</h1>
+      <div class="flex items-center justify-between gap-3">
+        <h1 class="text-page-title">{{ t('activities.list.title') }}</h1>
+        <Button variant="outline" @click="routesOpen = true">{{
+          t('activities.routes.library')
+        }}</Button>
+      </div>
+      <SavedRoutesDialog v-model:open="routesOpen" />
       <p class="text-body">{{ t('activities.list.subtitle') }}</p>
     </header>
 

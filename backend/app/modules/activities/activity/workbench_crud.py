@@ -182,3 +182,12 @@ def read_mapping(user_id: int, vehicle_uuid: str, db: Session) -> schema.Vehicle
     if mapping is None:
         raise errors.NotFoundError("Vehicle mapping not found")
     return schema.VehicleMappingRead.model_validate(mapping)
+
+
+def lock_owned_activity_type(activity_id: int, owner: int, db: Session) -> int | None:
+    """Lock the owned source row while a library snapshot is derived."""
+    return db.scalar(
+        select(models.Activity.activity_type)
+        .where(models.Activity.id == activity_id, models.Activity.user_id == owner)
+        .with_for_update()
+    )

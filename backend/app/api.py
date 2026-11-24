@@ -19,6 +19,7 @@ import modules.activities.activity_sets.public_router as activity_sets_public_ro
 import modules.activities.activity_sets.router as activity_sets_router
 import modules.activities.activity_streams.router as activity_streams_router
 import modules.activities.activity_thumbnail.public_router as activity_thumbnail_public_router
+import modules.activities.saved_routes.router as saved_routes_router
 import modules.auth.api_keys.router as auth_api_keys_router
 import modules.auth.dependencies as auth_dependencies
 import modules.auth.identity_providers.router as identity_providers_router
@@ -395,6 +396,7 @@ router.include_router(
     tags=["public_users"],
 )
 router.include_router(workbench_router.router, prefix=core_config.ROOT_PATH + "/workbench", tags=["workbench"])
+router.include_router(saved_routes_router.router, prefix=core_config.ROOT_PATH + "/workbench", tags=["workbench"])
 
 router.include_router(
     core_router.router,

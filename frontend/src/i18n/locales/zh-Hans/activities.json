@@ -326,5 +326,27 @@
       "failed": "失败",
       "pending": "等待执行"
     }
+  },
+  "routes": {
+    "library": "我的路线",
+    "route": "路线",
+    "trip": "TREK 旅行",
+    "selectTrip": "选择旅行",
+    "save": "保存为路线",
+    "send": "加入 TREK Tours",
+    "name": "路线名称",
+    "saved": "「{name}」已在我的路线中。",
+    "points": "{count} 个 GPS 点",
+    "loading": "正在读取路线…",
+    "empty": "打开一次骑行、徒步或跑步活动，选择「保存为路线」。",
+    "noTrips": "先在 TREK 中创建旅行，就可以添加路线。",
+    "loadError": "读取路线失败，请重新打开重试。",
+    "tripsError": "读取 TREK 旅行失败，请重新打开重试。",
+    "added": "已加入这趟旅行的 Tours。",
+    "alreadyAdded": "这趟旅行里已有这条路线。",
+    "sampled": "已传输 {total} 个点中的 {count} 个，路线库保留完整轨迹。",
+    "sendError": "TREK 尚未确认，请检查旅行编辑权限后重试。",
+    "noGps": "这项活动需要至少两个不同的 GPS 点才能保存路线。",
+    "saveError": "路线保存失败，请重试。"
   }
 }

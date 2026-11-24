@@ -5096,6 +5096,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/workbench/activities/{activity_id}/saved-route": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Save Activity Route
+         * @description Save an owned activity as a reusable route.
+         */
+        put: operations["save_activity_route_api_v1_workbench_activities__activity_id__saved_route_put"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/workbench/assets/{asset_id}/usage": {
         parameters: {
             query?: never;
@@ -5210,6 +5230,66 @@ export interface paths {
          * @description Queue a manual intervals.icu sync request on the host bridge.
          */
         post: operations["request_intervals_sync_api_v1_workbench_intervals_sync_requests_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workbench/route-trips": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Route Trips
+         * @description List destinations for the connected TREK owner.
+         */
+        get: operations["list_route_trips_api_v1_workbench_route_trips_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workbench/saved-routes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List Saved Routes
+         * @description List the owner's saved routes.
+         */
+        get: operations["list_saved_routes_api_v1_workbench_saved_routes_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/workbench/saved-routes/{route_id}/trips/{trip_id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send Saved Route
+         * @description Send a saved route into one selected trip's Tours.
+         */
+        post: operations["send_saved_route_api_v1_workbench_saved_routes__route_id__trips__trip_id__post"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6830,8 +6910,7 @@ export interface components {
          * @description Schema for reading a gear record.
          *
          *     Attributes:
-         *         id: Unique identifier.
-         *         user_id: Foreign key to user.
+         *         total_distance: Optional total distance in meters (activities plus initial distance).
          */
         GearRead: {
             /**
@@ -10215,6 +10294,42 @@ export interface components {
             outgoing?: components["schemas"]["FollowRelationshipRead"] | null;
         };
         /**
+         * RouteName
+         * @description User-visible name for a snapshot.
+         */
+        RouteName: {
+            /** Name */
+            name: string;
+        };
+        /**
+         * RouteRead
+         * @description List metadata only. Geometry stays server-side.
+         */
+        RouteRead: {
+            /** Activity Type */
+            activity_type: number;
+            /** Id */
+            id: number;
+            /** Name */
+            name: string;
+            /** Point Count */
+            point_count: number;
+            /** Source Activity Id */
+            source_activity_id: number | null;
+        };
+        /**
+         * SendResult
+         * @description An acknowledged transfer, including the actual export resolution.
+         */
+        SendResult: {
+            /** Already Added */
+            already_added: boolean;
+            /** Sent Points */
+            sent_points: number;
+            /** Tour Id */
+            tour_id: number | null;
+        };
+        /**
          * ServerSettingsEdit
          * @description Edit schema for server settings updates.
          *
@@ -10849,6 +10964,16 @@ export interface components {
              * @constant
              */
             token_type: "bearer";
+        };
+        /**
+         * TripChoice
+         * @description Trip metadata required by the destination picker.
+         */
+        TripChoice: {
+            /** Id */
+            id: number;
+            /** Title */
+            title: string;
         };
         /**
          * TypeBreakdownItem
@@ -20548,6 +20673,52 @@ export interface operations {
             };
         };
     };
+    save_activity_route_api_v1_workbench_activities__activity_id__saved_route_put: {
+        parameters: {
+            query?: {
+                api_key?: string | null;
+            };
+            header?: never;
+            path: {
+                activity_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RouteName"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouteRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unexpected error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
     read_asset_api_v1_workbench_assets__asset_id__usage_get: {
         parameters: {
             query?: {
@@ -20774,6 +20945,129 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IntervalsSyncRequestAcceptedRead"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unexpected error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    list_route_trips_api_v1_workbench_route_trips_get: {
+        parameters: {
+            query?: {
+                api_key?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TripChoice"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unexpected error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    list_saved_routes_api_v1_workbench_saved_routes_get: {
+        parameters: {
+            query?: {
+                api_key?: string | null;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RouteRead"][];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+            /** @description Unexpected error */
+            default: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetail"];
+                };
+            };
+        };
+    };
+    send_saved_route_api_v1_workbench_saved_routes__route_id__trips__trip_id__post: {
+        parameters: {
+            query?: {
+                api_key?: string | null;
+            };
+            header?: never;
+            path: {
+                route_id: number;
+                trip_id: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendResult"];
                 };
             };
             /** @description Validation Error */

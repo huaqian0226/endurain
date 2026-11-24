@@ -272,5 +272,27 @@
     "inlineSkating": "直排輪",
     "hiit": "HIIT",
     "jumpRope": "跳繩"
+  },
+  "routes": {
+    "library": "我的路線",
+    "route": "路線",
+    "trip": "TREK 旅行",
+    "selectTrip": "選擇旅行",
+    "save": "儲存為路線",
+    "send": "加入 TREK Tours",
+    "name": "路線名稱",
+    "saved": "「{name}」已在我的路線中。",
+    "points": "{count} 個 GPS 點",
+    "loading": "正在讀取路線…",
+    "empty": "開啟一次騎乘、健行或跑步活動，選擇「儲存為路線」。",
+    "noTrips": "先在 TREK 中建立旅行，就能新增路線。",
+    "loadError": "讀取路線失敗，請重新開啟再試。",
+    "tripsError": "讀取 TREK 旅行失敗，請重新開啟再試。",
+    "added": "已加入這趟旅行的 Tours。",
+    "alreadyAdded": "這趟旅行已有這條路線。",
+    "sampled": "已傳送 {total} 個點中的 {count} 個，路線庫保留完整軌跡。",
+    "sendError": "TREK 尚未確認，請檢查旅行編輯權限再試。",
+    "noGps": "此活動需要至少兩個不同的 GPS 點才能儲存路線。",
+    "saveError": "路線儲存失敗，請再試一次。"
   }
 }

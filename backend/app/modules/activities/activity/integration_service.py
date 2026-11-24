@@ -527,3 +527,10 @@ def filter_existing_activity_ids(activity_ids: Sequence[int], db: Session) -> se
         The subset of ``activity_ids`` that exist.
     """
     return activity_crud.get_existing_activity_ids(activity_ids, db)
+
+
+def lock_owned_activity_type(activity_id: int, owner: int, db: Session) -> int | None:
+    """Return the sport of the locked owner activity, or None for an inaccessible source."""
+    from modules.activities.activity import workbench_crud
+
+    return workbench_crud.lock_owned_activity_type(activity_id, owner, db)

@@ -15,6 +15,7 @@ def client():
     import core.database as database
     import core.exceptions as exceptions
     import modules.activities.activity.workbench_router as router
+    import modules.activities.saved_routes.router as routes
     import modules.auth.dependencies as auth
     from modules.activities.activity.models import Activity
     from modules.gears.gear.models import Gear
@@ -61,6 +62,7 @@ def client():
     app.state.test_db = db
     exceptions.register_exception_handlers(app)
     app.include_router(router.router, prefix="/workbench")
+    app.include_router(routes.router, prefix="/workbench")
     app.dependency_overrides[database.get_db] = lambda: db
     app.dependency_overrides[auth.get_user_id_from_auth] = lambda: 1
     app.dependency_overrides[auth.get_user_id_from_auth] = lambda: 1
@@ -321,3 +323,95 @@ def test_aggregated_api_reaches_workbench_before_frontend_fallback(client):
     assert response.status_code == 200
     assert response.headers["content-type"].startswith("application/json")
     assert response.json()["revision"] == "synthetic-catalogue"
+
+
+def test_saved_route_owns_snapshot_and_sends_once_per_trip(client, monkeypatch):
+    from xml.etree import ElementTree
+
+    import modules.auth.dependencies as auth
+    from modules.activities.activity.models import Activity
+    from modules.activities.activity_streams.models import ActivityStreams
+
+    db = client.app.state.test_db
+    endpoint = "/workbench/activities/2/saved-route"
+    assert client.put(endpoint, json={"name": "Test trail"}).status_code == 400
+    db.get(Activity, 2).activity_type = 5
+    db.add(
+        ActivityStreams(
+            activity_id=2,
+            stream_type=7,
+            stream_waypoints=[
+                {"lat": 150, "lon": 12},
+                {"lat": 51.2, "lon": 0, "time": 1, "hr": 130},
+                {"lat": 51.2, "lon": 0},
+                {"lat": 51.3, "lon": 0.2, "time": 2},
+            ],
+        )
+    )
+    db.add(
+        ActivityStreams(
+            activity_id=2,
+            stream_type=4,
+            stream_waypoints=[
+                {"ele": 18.4, "time": 1},
+                {"ele": 25.1, "time": 2},
+            ],
+        )
+    )
+    db.commit()
+    route = client.put(endpoint, json={"name": "  Ridge & River  "}).json()
+    assert route["name"] == "Ridge & River" and route["point_count"] == 2
+    assert client.put(endpoint, json={"name": "Retry"}).json() == route
+    assert client.get("/workbench/saved-routes").json() == [route]
+    import modules.activities.saved_routes.service as service
+
+    calls = []
+
+    def fake_trek(owner, name, args):
+        assert owner == 1
+        if name == "list_trips":
+            return {"trips": [{"id": 7, "title": "Island"}]}
+        assert name == "import_tour_gpx"
+        assert args["tour_type"] == "bike" and args["bike_profile"] == "gravel"
+        root = ElementTree.fromstring(args["gpx"])  # noqa: S314 -- generated synthetic XML
+        assert root.find(".//{*}name").text == route["name"]
+        assert len(root.findall(".//{*}trkpt")) == 2
+        assert root.find(".//{*}ele").text == "18.4"
+        assert "time" not in args["gpx"] and "130" not in args["gpx"]
+        calls.append(args["tripId"])
+        return {"tours": [{"place_id": 44}], "skipped": 0}
+
+    monkeypatch.setattr(service, "call_trek", fake_trek)
+    assert client.get("/workbench/route-trips").json() == [{"id": 7, "title": "Island"}]
+    push = f"/workbench/saved-routes/{route['id']}/trips"
+    assert client.post(push + "/7").json()["already_added"] is False
+    assert client.post(push + "/7").json()["already_added"] is True
+    assert client.post(push + "/8").status_code == 200
+    assert calls == [7, 8]
+    client.app.dependency_overrides[auth.get_user_id_from_auth] = lambda: 2
+    assert client.get("/workbench/saved-routes").json() == []
+    assert client.put(endpoint, json={"name": "Other"}).status_code == 404
+    assert client.post(push + "/7").status_code == 404
+
+
+def test_saved_route_recovers_a_native_duplicate_without_overwriting_a_different_loop(monkeypatch):
+    from modules.activities.saved_routes import service
+
+    xml, count = service._gpx("River Loop", [[51.0, -1.0, None], [51.02, -1.02, None], [51.0, -1.0, None]])
+    other, _ = service._gpx("River Loop", [[51.0, -1.0, None], [51.05, -1.04, None], [51.0, -1.0, None]])
+    assert count == 3
+    remote = {1: other, 2: xml}
+
+    def trek(_owner, tool, args):
+        if tool == "import_tour_gpx":
+            return {"skipped": 1, "tours": []}
+        if tool == "list_tours":
+            return {"tours": [{"name": "River Loop", "tour_type": "hike", "place_id": i} for i in remote]}
+        assert tool == "export_tour_gpx"
+        return {"gpx": remote[args["placeId"]]}
+
+    monkeypatch.setattr(service, "call_trek", trek)
+    args = {"tripId": 4, "gpx": xml, "file_name": "River Loop.gpx", "tour_type": "hike"}
+    assert service._import_matching_tour(1, args) == (2, True)
+    del remote[2]
+    assert service._import_matching_tour(1, args) == (None, False)
