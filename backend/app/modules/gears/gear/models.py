@@ -26,6 +26,7 @@ class Gear(Base):
         brand: Gear brand name.
         model: Gear model name.
         nickname: Gear nickname.
+        group_name: Optional user-defined gear group name.
         gear_type: Gear type identifier.
         user_id: Foreign key to users table.
         created_at: Gear creation timestamp.
@@ -84,6 +85,11 @@ class Gear(Base):
         index=True,
         nullable=False,
         comment=("Gear nickname (May include spaces)"),
+    )
+    group_name: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Optional user-defined gear group name",
     )
     gear_type: Mapped[int] = mapped_column(
         nullable=False,

@@ -6602,6 +6602,11 @@ export interface components {
             /** @description Gear type identifier */
             gear_type: components["schemas"]["GearType"];
             /**
+             * Group Name
+             * @description Optional gear group name
+             */
+            group_name?: string | null;
+            /**
              * Groupset
              * @description Groupset or drivetrain specification
              */
@@ -6714,6 +6719,11 @@ export interface components {
             garminconnect_gear_id?: string | null;
             /** @description Gear type identifier */
             gear_type: components["schemas"]["GearType"];
+            /**
+             * Group Name
+             * @description Optional gear group name
+             */
+            group_name?: string | null;
             /**
              * Groupset
              * @description Groupset or drivetrain specification
@@ -6850,6 +6860,11 @@ export interface components {
             /** @description Gear type identifier */
             gear_type: components["schemas"]["GearType"];
             /**
+             * Group Name
+             * @description Optional gear group name
+             */
+            group_name?: string | null;
+            /**
              * Groupset
              * @description Groupset or drivetrain specification
              */
@@ -6920,6 +6935,11 @@ export interface components {
              */
             strava_gear_id?: string | null;
             /**
+             * Total Distance
+             * @description Total activity distance in meters (including initial distance)
+             */
+            total_distance?: number | null;
+            /**
              * User Id
              * @description Foreign key to user
              */
@@ -6981,6 +7001,11 @@ export interface components {
             garminconnect_gear_id?: string | null;
             /** @description Gear type identifier */
             gear_type: components["schemas"]["GearType"];
+            /**
+             * Group Name
+             * @description Optional gear group name
+             */
+            group_name?: string | null;
             /**
              * Groupset
              * @description Groupset or drivetrain specification

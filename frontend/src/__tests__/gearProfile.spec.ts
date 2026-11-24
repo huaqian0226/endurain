@@ -39,6 +39,7 @@ function makeGearDetail(overrides: Partial<GearDetail> = {}): GearDetail {
     userId: 1,
     gearType: 1,
     nickname: 'Aero Synth',
+    groupName: null,
     brand: 'BrandA',
     model: 'Aero Pro',
     active: true,

@@ -51,6 +51,7 @@ class GearBase(BaseModel):
         brand: Gear brand name.
         model: Gear model name.
         nickname: Gear display nickname.
+        group_name: Optional user-defined gear group name.
         gear_type: Gear type identifier.
         created_at: Gear creation timestamp.
         active: Whether the gear is active.
@@ -84,6 +85,11 @@ class GearBase(BaseModel):
         ...,
         max_length=250,
         description="Gear display nickname",
+    )
+    group_name: StrictStr | None = Field(
+        default=None,
+        max_length=100,
+        description="Optional gear group name",
     )
     gear_type: GearType = Field(
         ...,
@@ -174,6 +180,7 @@ class GearBase(BaseModel):
     )
 
     @field_validator(
+        "group_name",
         "frame_number",
         "size",
         "color",
@@ -213,9 +220,9 @@ class GearCreate(GearBase):
     )
 
 
-class GearRead(GearBase):
+class _GearIdentity(GearBase):
     """
-    Schema for reading a gear record.
+    Persisted gear fields shared by read and detail schemas.
 
     Attributes:
         id: Unique identifier.
@@ -232,7 +239,22 @@ class GearRead(GearBase):
     )
 
 
-class GearDetailRead(GearRead):
+class GearRead(_GearIdentity):
+    """
+    Schema for reading a gear record.
+
+    Attributes:
+        total_distance: Optional total distance in meters (activities plus initial distance).
+    """
+
+    total_distance: StrictFloat | None = Field(
+        default=None,
+        ge=0,
+        description="Total activity distance in meters (including initial distance)",
+    )
+
+
+class GearDetailRead(_GearIdentity):
     """
     Extended gear with computed stats.
 

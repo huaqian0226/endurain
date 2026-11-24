@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, useId, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 import type { Gear, GearInput, GearType } from '@/features/gears/types'
@@ -31,9 +31,13 @@ const props = withDefaults(
     units: Schemas['Units']
     /** The viewer's currency, used for the purchase-value symbol. */
     currency: Schemas['Currency']
+    /** Distinct existing group names for datalist autocomplete suggestions. */
+    existingGroups?: string[]
   }>(),
-  { gear: null },
+  { gear: null, existingGroups: () => [] },
 )
+
+const groupDatalistId = useId()
 
 const emit = defineEmits<{
   success: [message: string]
@@ -48,6 +52,7 @@ const updateMutation = useUpdateGearMutation()
 /** Form shape: numeric/date fields are kept as strings and parsed at submit. */
 interface GearFormValues {
   nickname: string
+  groupName: string
   gearType: GearType
   brand: string
   model: string
@@ -68,6 +73,7 @@ interface GearFormValues {
 }
 
 const NICKNAME_MAX = 250
+const GROUP_NAME_MAX = 100
 const FRAME_NUMBER_MAX = 100
 const SIZE_MAX = 50
 const COLOR_MAX = 100
@@ -107,6 +113,7 @@ function displayDistanceFromKm(km: number | null): string {
 function defaultValues(): GearFormValues {
   return {
     nickname: '',
+    groupName: '',
     gearType: GEAR_TYPE.BICYCLE,
     brand: '',
     model: '',
@@ -138,6 +145,7 @@ function buildInput(values: GearFormValues): GearInput {
   }
   return {
     nickname: values.nickname.trim(),
+    groupName: cleanOptionalText(values.groupName),
     gearType: values.gearType,
     brand: cleanOptionalText(values.brand),
     model: cleanOptionalText(values.model),
@@ -194,6 +202,7 @@ const { values, errors, isValid, isSubmitting, handleSubmit, handleBlur, validat
         required<string>(t('gears.form.nicknameRequired')),
         maxLength(NICKNAME_MAX, t('gears.form.nicknameTooLong')),
       ),
+      groupName: maxLength(GROUP_NAME_MAX, t('gears.form.groupNameTooLong')),
       brand: maxLength(NICKNAME_MAX, t('gears.form.brandTooLong')),
       model: maxLength(NICKNAME_MAX, t('gears.form.modelTooLong')),
       createdAt: required<string>(t('gears.form.createdAtRequired')),
@@ -259,6 +268,7 @@ function populate(): void {
     return
   }
   values.nickname = gear.nickname
+  values.groupName = gear.groupName ?? ''
   values.gearType = gear.gearType
   values.brand = gear.brand ?? ''
   values.model = gear.model ?? ''
@@ -319,6 +329,31 @@ watch(open, (isOpen) => {
             :disabled="isSubmitting"
             @blur="handleBlur('nickname')"
           />
+        </template>
+      </FormField>
+
+      <FormField
+        class="sm:col-span-2"
+        :label="t('gears.form.groupName')"
+        :error="errors.groupName"
+        :placeholder="t('gears.form.groupNamePlaceholder')"
+      >
+        <template #default="{ fieldId, describedBy, invalid, placeholder }">
+          <Input
+            :id="fieldId"
+            v-model="values.groupName"
+            :aria-describedby="describedBy"
+            :aria-invalid="invalid"
+            :placeholder="placeholder"
+            :list="groupDatalistId"
+            name="groupName"
+            maxlength="100"
+            :disabled="isSubmitting"
+            @blur="handleBlur('groupName')"
+          />
+          <datalist :id="groupDatalistId">
+            <option v-for="group in existingGroups" :key="group" :value="group" />
+          </datalist>
         </template>
       </FormField>
 

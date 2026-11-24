@@ -4,13 +4,14 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { ArrowLeft } from '@lucide/vue'
 
-import type { Gear } from '@/features/gears/types'
+import type { Gear, GearsPage } from '@/features/gears/types'
 
 import GearActivitiesPanel from '@/features/gears/components/GearActivitiesPanel.vue'
 import GearComponentsPanel from '@/features/gears/components/GearComponentsPanel.vue'
 import GearFormDialog from '@/features/gears/components/GearFormDialog.vue'
 import GearInfoCard from '@/features/gears/components/GearInfoCard.vue'
 import GearProfileCard from '@/features/gears/components/GearProfileCard.vue'
+import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -19,6 +20,9 @@ import { ErrorState } from '@/components/ui/error-state'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useCurrentUser } from '@/features/auth/composables/useCurrentUser'
 import { useToasts } from '@/composables/useToasts'
+import { queryClient } from '@/plugins/vueQuery'
+import { queryKeys } from '@/services/queryKeys'
+import { collectDistinctGroupNames } from '@/features/gears/utils/gearGroups'
 import { presentGearType } from '@/features/gears/utils/gearType'
 import { useDeleteGearMutation, useGearQuery } from '@/features/gears/composables/useGears'
 
@@ -45,6 +49,14 @@ const typeLabel = computed(() =>
 // Edit dialog reuses the shared form; the detail is a superset of `Gear`.
 const isFormOpen = ref(false)
 const editingGear = computed<Gear | null>(() => gear.value ?? null)
+const existingGroups = computed(() => {
+  const cachedPages = queryClient.getQueriesData<GearsPage>({
+    queryKey: queryKeys.gears.lists(),
+  })
+  const cachedGears = cachedPages.flatMap(([, pageData]) => pageData?.records ?? [])
+  const known = gear.value ? [...cachedGears, gear.value] : cachedGears
+  return collectDistinctGroupNames(known)
+})
 
 function openEdit(): void {
   isFormOpen.value = true
@@ -186,7 +198,12 @@ function confirmDelete(): void {
     <!-- Content -->
     <template v-else>
       <header class="flex flex-col gap-1">
-        <h1 class="text-page-title">{{ gear.nickname }}</h1>
+        <div class="flex flex-wrap items-center gap-2">
+          <h1 class="text-page-title">{{ gear.nickname }}</h1>
+          <Badge v-if="gear.groupName" variant="secondary" data-testid="gear-detail-group">
+            {{ gear.groupName }}
+          </Badge>
+        </div>
         <p class="text-body">{{ typeLabel }}</p>
       </header>
       <!-- v1-style layout: a single stacked column on mobile, a three-column row
@@ -216,6 +233,7 @@ function confirmDelete(): void {
         :gear="editingGear"
         :units="units"
         :currency="currency"
+        :existing-groups="existingGroups"
         @success="onFormSuccess"
         @error="onFormError"
       />

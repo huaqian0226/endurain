@@ -23,6 +23,23 @@ import modules.gears.gear.schema as gears_schema
 router = APIRouter()
 
 
+def _attach_gear_total_distances(
+    gears: list[gears_schema.GearRead],
+    user_id: int,
+    db: Session,
+) -> list[gears_schema.GearRead]:
+    """Attach computed total_distance (activities + initial_kms) to a list of gears in one query."""
+    if not gears:
+        return gears
+    stats = gears_crud.get_gears_activity_stats([gear.id for gear in gears], user_id, db)
+    enriched: list[gears_schema.GearRead] = []
+    for gear in gears:
+        activity_distance = stats.get(gear.id, {}).get("total_distance", 0.0)
+        total_distance = activity_distance + float(gear.initial_kms or 0) * 1000
+        enriched.append(gear.model_copy(update={"total_distance": total_distance}))
+    return enriched
+
+
 @router.get(
     "",
     response_model=gears_schema.GearsListResponse,
@@ -97,6 +114,7 @@ async def read_gears_user_all_pagination(
         num_records,
         show_inactive,
     )
+    gears = _attach_gear_total_distances(gears, token_user_id, db)
 
     return gears_schema.GearsListResponse(
         total=total,
@@ -179,7 +197,7 @@ async def read_gear_id(
     )
 
     return gears_schema.GearDetailRead(
-        **gear.model_dump(),
+        **gear.model_dump(exclude={"total_distance"}),
         total_distance=(activity_stats["total_distance"] + initial_kms_m),
         total_time=(activity_stats["total_time"]),
         total_components_cost=(components_cost),
@@ -226,11 +244,12 @@ async def read_gear_user_contains_nickname(
     Raises:
         HTTPException: If unauthorized.
     """
-    return gears_crud.get_gear_user_contains_nickname(
+    gears = gears_crud.get_gear_user_contains_nickname(
         token_user_id,
         nickname,
         db,
     )
+    return _attach_gear_total_distances(gears, token_user_id, db)
 
 
 @router.get(

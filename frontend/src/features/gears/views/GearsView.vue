@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Filter, Plus, Search, Wrench, X } from '@lucide/vue'
+import { ChevronDown, ChevronRight, Filter, Plus, Search, Wrench, X } from '@lucide/vue'
 
 import type { Gear } from '@/features/gears/types'
 
@@ -21,6 +21,13 @@ import { useCurrentUser } from '@/features/auth/composables/useCurrentUser'
 import { useRecordsPerPage } from '@/features/config/composables/useRecordsPerPage'
 import { useListPagination } from '@/composables/useListPagination'
 import { useToasts } from '@/composables/useToasts'
+import { metersToDisplayDistance } from '@/features/gears/utils/format'
+import {
+  collectDistinctGroupNames,
+  partitionGearsByGroup,
+  type GearGroupSection,
+} from '@/features/gears/utils/gearGroups'
+import { GEAR_TYPE } from '@/features/gears/utils/gearType'
 import {
   useDeleteGearMutation,
   useGearSearchQuery,
@@ -87,6 +94,51 @@ const { totalPages, reset: resetPage } = useListPagination(page, totalCount, rec
 const displayedGears = computed(() =>
   isSearching.value ? (searchQuery.data.value ?? []) : listGears.value,
 )
+const partitionedGears = computed(() => partitionGearsByGroup(displayedGears.value))
+const existingGroups = computed(() =>
+  collectDistinctGroupNames([...listGears.value, ...displayedGears.value]),
+)
+const distanceUnitLabel = computed(() =>
+  units.value === 'imperial' ? t('gears.unitMi') : t('gears.unitKm'),
+)
+
+// Groups start expanded by default; only explicitly collapsed group names live here.
+const collapsedGroups = ref<Set<string>>(new Set())
+
+/** Whether a gear group section is currently expanded. */
+function isGroupExpanded(name: string): boolean {
+  return !collapsedGroups.value.has(name)
+}
+
+/** Toggles a gear group section between expanded and collapsed. */
+function toggleGroup(name: string): void {
+  const next = new Set(collapsedGroups.value)
+  if (next.has(name)) {
+    next.delete(name)
+  } else {
+    next.add(name)
+  }
+  collapsedGroups.value = next
+}
+
+/** Formats the member count label for a group header. */
+function formatGroupCount(group: GearGroupSection): string {
+  const count = group.gears.length
+  const allBikes = group.gears.every((gear) => gear.gearType === GEAR_TYPE.BICYCLE)
+  if (allBikes) {
+    return count === 1
+      ? t('gears.groups.bikeCountOne', { count })
+      : t('gears.groups.bikeCountOther', { count })
+  }
+  return count === 1
+    ? t('gears.groups.itemCountOne', { count })
+    : t('gears.groups.itemCountOther', { count })
+}
+
+/** Formats the summed distance of a group's visible members in the viewer's units. */
+function formatGroupDistance(totalMeters: number): string {
+  return `${metersToDisplayDistance(totalMeters, units.value)} ${distanceUnitLabel.value}`
+}
 const isPending = computed(() =>
   isSearching.value ? searchQuery.isPending.value : listQuery.isPending.value,
 )
@@ -303,11 +355,77 @@ function confirmDelete(): void {
           </EmptyState>
         </template>
 
-        <ul class="divide-y divide-border">
-          <li v-for="gear in displayedGears" :key="gear.id">
-            <GearListItem :gear="gear" @edit="openEdit" @delete="openDelete" />
-          </li>
-        </ul>
+        <div data-testid="gears-list-container">
+          <div
+            v-if="partitionedGears.groups.length > 0"
+            class="flex flex-col gap-3 p-3"
+            data-testid="gear-groups-container"
+          >
+            <section
+              v-for="group in partitionedGears.groups"
+              :key="group.name"
+              data-testid="gear-group-section"
+              :data-group-name="group.name"
+              class="overflow-hidden rounded-card border border-border bg-card"
+            >
+              <button
+                type="button"
+                data-testid="gear-group-toggle"
+                :aria-expanded="isGroupExpanded(group.name)"
+                :aria-label="
+                  isGroupExpanded(group.name)
+                    ? t('gears.groups.collapseGroup', { name: group.name })
+                    : t('gears.groups.expandGroup', { name: group.name })
+                "
+                class="flex w-full cursor-pointer items-center justify-between gap-3 bg-muted/40 px-4 py-2.5 text-left transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-3 focus-visible:ring-ring/30"
+                @click="toggleGroup(group.name)"
+              >
+                <span class="flex min-w-0 items-center gap-2">
+                  <ChevronDown
+                    v-if="isGroupExpanded(group.name)"
+                    class="size-4 shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <ChevronRight
+                    v-else
+                    class="size-4 shrink-0 text-muted-foreground"
+                    aria-hidden="true"
+                  />
+                  <span data-testid="gear-group-name" class="truncate font-medium text-foreground">
+                    {{ group.name }}
+                  </span>
+                </span>
+                <span class="flex shrink-0 items-center gap-2 text-hint tabular-nums">
+                  <span data-testid="gear-group-count">{{ formatGroupCount(group) }}</span>
+                  <span aria-hidden="true">·</span>
+                  <span data-testid="gear-group-distance">
+                    {{ formatGroupDistance(group.totalDistanceMeters) }}
+                  </span>
+                </span>
+              </button>
+              <ul
+                v-if="isGroupExpanded(group.name)"
+                data-testid="gear-group-items"
+                class="divide-y divide-border border-t border-border"
+              >
+                <li v-for="gear in group.gears" :key="gear.id">
+                  <GearListItem :gear="gear" :units="units" @edit="openEdit" @delete="openDelete" />
+                </li>
+              </ul>
+            </section>
+          </div>
+
+          <ul
+            v-if="partitionedGears.ungrouped.length > 0"
+            data-testid="ungrouped-gears-list"
+            class="divide-y divide-border"
+            :class="partitionedGears.groups.length > 0 ? 'border-t border-border' : ''"
+          >
+            <li v-for="gear in partitionedGears.ungrouped" :key="gear.id">
+              <GearListItem :gear="gear" :units="units" @edit="openEdit" @delete="openDelete" />
+            </li>
+          </ul>
+        </div>
       </ListPanel>
     </div>
 
@@ -316,6 +434,7 @@ function confirmDelete(): void {
       :gear="editingGear"
       :units="units"
       :currency="currency"
+      :existing-groups="existingGroups"
       @success="onFormSuccess"
       @error="onFormError"
     />

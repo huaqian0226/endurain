@@ -4,18 +4,40 @@ import { useI18n } from 'vue-i18n'
 import { Pencil, Trash2 } from '@lucide/vue'
 
 import type { Gear } from '@/features/gears/types'
+import type { Schemas } from '@/types'
 
 import GearTypeIcon from '@/features/gears/components/GearTypeIcon.vue'
 import GearBadges from '@/features/gears/components/GearBadges.vue'
 import { Button } from '@/components/ui/button'
-import { presentGearType } from '@/features/gears/utils/gearType'
+import { metersToDisplayDistance } from '@/features/gears/utils/format'
+import { gearDistanceMeters } from '@/features/gears/utils/gearGroups'
+import { GEAR_TYPE, presentGearType } from '@/features/gears/utils/gearType'
 
-const props = defineProps<{ gear: Gear }>()
+const props = withDefaults(
+  defineProps<{
+    gear: Gear
+    units?: Schemas['Units']
+  }>(),
+  { units: 'metric' },
+)
 const emit = defineEmits<{ edit: [gear: Gear]; delete: [gear: Gear] }>()
 
 const { t } = useI18n()
 
 const typeLabel = computed(() => t(presentGearType(props.gear.gearType).labelKey))
+const distanceUnitLabel = computed(() =>
+  props.units === 'imperial' ? t('gears.unitMi') : t('gears.unitKm'),
+)
+const distanceLabel = computed(() => {
+  if (
+    props.gear.gearType === GEAR_TYPE.RACQUET ||
+    (props.gear.totalDistance === null && props.gear.initialKms === null)
+  ) {
+    return null
+  }
+  const value = metersToDisplayDistance(gearDistanceMeters(props.gear), props.units)
+  return `${value} ${distanceUnitLabel.value}`
+})
 </script>
 
 <template>
@@ -33,8 +55,15 @@ const typeLabel = computed(() => t(presentGearType(props.gear.gearType).labelKey
         >
           {{ gear.nickname }}
         </RouterLink>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <p class="truncate text-hint">{{ typeLabel }}</p>
+          <span
+            v-if="distanceLabel"
+            data-testid="gear-item-distance"
+            class="text-hint tabular-nums"
+          >
+            {{ distanceLabel }}
+          </span>
           <GearBadges :gear="gear" />
         </div>
       </div>

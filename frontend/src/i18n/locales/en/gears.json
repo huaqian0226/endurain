@@ -35,6 +35,9 @@
     "nicknameRequired": "Nickname is required",
     "nicknameTooLong": "Nickname must be 250 characters or fewer",
     "nicknameTaken": "You already have gear with that nickname",
+    "groupName": "Group",
+    "groupNamePlaceholder": "e.g. Road bikes, Rental",
+    "groupNameTooLong": "Group must be 100 characters or fewer",
     "gearType": "Type",
     "brand": "Brand",
     "brandTooLong": "Brand must be 250 characters or fewer",
@@ -100,6 +103,7 @@
   "profile": {
     "title": "Profile",
     "empty": "No profile details recorded yet.",
+    "groupName": "Group",
     "retiredBadge": "Retired",
     "retiredBadgeWithDate": "Retired · {date}",
     "purchaseDate": "Purchase date",
@@ -169,6 +173,14 @@
       "title": "Couldn't load components",
       "description": "Something went wrong while loading this gear's components."
     }
+  },
+  "groups": {
+    "bikeCountOne": "{count} bike",
+    "bikeCountOther": "{count} bikes",
+    "itemCountOne": "{count} item",
+    "itemCountOther": "{count} items",
+    "expandGroup": "Expand group {name}",
+    "collapseGroup": "Collapse group {name}"
   },
   "activities": {
     "title": "Activities",

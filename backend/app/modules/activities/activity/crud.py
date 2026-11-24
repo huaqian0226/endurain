@@ -737,6 +737,46 @@ def sum_gear_usage(gear_id: int, user_id: int, db: Session) -> activity_contract
     return activity_contracts.ActivityUsageTotals(distance=float(distance), time=float(moving_time))
 
 
+def sum_gears_usage(
+    gear_ids: Sequence[int],
+    user_id: int,
+    db: Session,
+) -> dict[int, activity_contracts.ActivityUsageTotals]:
+    """Total distance and moving time per gear in one grouped query.
+
+    Lives here rather than in the gears module so the activities table is only
+    ever queried by its owner. Only the gear owner's own activities count.
+
+    Args:
+        gear_ids: Gear IDs to accumulate usage for.
+        user_id: The gears' owner.
+        db: Database session.
+
+    Returns:
+        Mapping of gear ID to accumulated usage totals; gears with no
+        activities are omitted.
+    """
+    if not gear_ids:
+        return {}
+    stmt = (
+        select(
+            activity_models.Activity.gear_id,
+            func.coalesce(func.sum(activity_models.Activity.distance), 0),
+            func.coalesce(func.sum(activity_models.Activity.total_timer_time), 0),
+        )
+        .where(
+            activity_models.Activity.gear_id.in_(gear_ids),
+            activity_models.Activity.user_id == user_id,
+        )
+        .group_by(activity_models.Activity.gear_id)
+    )
+    return {
+        int(gear_id): activity_contracts.ActivityUsageTotals(distance=float(distance), time=float(moving_time))
+        for gear_id, distance, moving_time in db.execute(stmt).all()
+        if gear_id is not None
+    }
+
+
 def sum_gear_usage_by_window(
     gear_id: int,
     user_id: int,

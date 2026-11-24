@@ -34,11 +34,13 @@ export function mapGear(dto: GearDto): Gear {
     userId: dto.user_id,
     gearType: dto.gear_type,
     nickname: dto.nickname,
+    groupName: dto.group_name ?? null,
     brand: dto.brand ?? null,
     model: dto.model ?? null,
     active: dto.active ?? true,
     createdAt: dto.created_at ?? null,
     initialKms: dto.initial_kms ?? null,
+    totalDistance: dto.total_distance ?? null,
     purchaseValue: dto.purchase_value ?? null,
     purchaseDate: dto.purchase_date ?? null,
     retiredDate: dto.retired_date ?? null,
@@ -81,6 +83,7 @@ export function mapGearDetail(dto: GearDetailDto): GearDetail {
 function toGearWireFields(input: GearInput) {
   return {
     nickname: input.nickname,
+    group_name: input.groupName,
     gear_type: input.gearType,
     brand: input.brand,
     model: input.model,

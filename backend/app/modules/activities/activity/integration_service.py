@@ -127,6 +127,25 @@ def get_gear_usage_totals(gear_id: int, user_id: int, db: Session) -> activity_c
     return activity_crud.sum_gear_usage(gear_id, user_id, db)
 
 
+def get_gears_usage_totals(
+    gear_ids: Sequence[int],
+    user_id: int,
+    db: Session,
+) -> dict[int, activity_contracts.ActivityUsageTotals]:
+    """Return total distance and moving time per gear in a single query.
+
+    Args:
+        gear_ids: Gear IDs to accumulate usage for.
+        user_id: The gears' owner; only their activities count.
+        db: Database session.
+
+    Returns:
+        Mapping of gear ID to accumulated totals; gears with no activities are
+        omitted.
+    """
+    return activity_crud.sum_gears_usage(gear_ids, user_id, db)
+
+
 def get_gear_usage_totals_by_window(
     gear_id: int,
     user_id: int,

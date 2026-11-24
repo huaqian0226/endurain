@@ -22,6 +22,7 @@ _IMMUTABLE_FIELDS: frozenset[str] = frozenset({"id", "user_id"})
 # when present, while omitting them preserves existing stored values.
 _CLEARABLE_PROFILE_FIELDS: frozenset[str] = frozenset(
     {
+        "group_name",
         "purchase_date",
         "retired_date",
         "frame_number",
@@ -177,6 +178,38 @@ def get_gear_activity_stats(
     return {
         "total_distance": totals.distance,
         "total_time": totals.time,
+    }
+
+
+@core_decorators.handle_db_errors
+def get_gears_activity_stats(
+    gear_ids: list[int],
+    user_id: int,
+    db: Session,
+) -> dict[int, dict[str, float]]:
+    """
+    Get aggregated activity stats for multiple gears in a single query.
+
+    Args:
+        gear_ids: Gear IDs to aggregate.
+        user_id: Owner user ID; only their activities count.
+        db: Database session.
+
+    Returns:
+        Mapping of gear ID to ``{"total_distance": meters, "total_time": seconds}``.
+
+    Raises:
+        HTTPException: On database error.
+    """
+    if not gear_ids:
+        return {}
+    totals = activity_integration.get_gears_usage_totals(gear_ids, user_id, db)
+    return {
+        gear_id: {
+            "total_distance": usage.distance,
+            "total_time": usage.time,
+        }
+        for gear_id, usage in totals.items()
     }
 
 

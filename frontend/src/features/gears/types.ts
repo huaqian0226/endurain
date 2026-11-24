@@ -22,11 +22,13 @@ export type GearType = Schemas['GearType']
  * @property userId - Owning user id.
  * @property gearType - Numeric gear-type identifier (1–8).
  * @property nickname - Display nickname.
+ * @property groupName - Optional user-defined gear group name, or `null`.
  * @property brand - Manufacturer brand, or `null`.
  * @property model - Model name, or `null`.
  * @property active - Whether the gear is in active use.
  * @property createdAt - Acquisition/creation date (ISO string), or `null`.
  * @property initialKms - Initial distance offset in kilometres, or `null`.
+ * @property totalDistance - Server-computed total distance in metres (activities plus initial distance), or `null`.
  * @property purchaseValue - Purchase price in the user's currency, or `null`.
  * @property purchaseDate - Purchase calendar date (`YYYY-MM-DD`), or `null`.
  * @property retiredDate - Retirement calendar date (`YYYY-MM-DD`), or `null`.
@@ -46,11 +48,13 @@ export interface Gear {
   userId: number
   gearType: GearType
   nickname: string
+  groupName: string | null
   brand: string | null
   model: string | null
   active: boolean
   createdAt: string | null
   initialKms: number | null
+  totalDistance: number | null
   purchaseValue: number | null
   purchaseDate: string | null
   retiredDate: string | null
@@ -87,6 +91,7 @@ export interface GearDetail extends Gear {
  */
 export interface GearInput {
   nickname: string
+  groupName: string | null
   gearType: GearType
   brand: string | null
   model: string | null

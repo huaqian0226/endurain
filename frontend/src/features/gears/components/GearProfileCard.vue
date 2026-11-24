@@ -45,6 +45,7 @@ const retiredBadgeText = computed(() =>
 
 const hasProfileDetails = computed(() =>
   Boolean(
+    props.gear.groupName ||
     purchaseDateLabel.value ||
     retiredDateLabel.value ||
     props.gear.modelYear !== null ||
@@ -72,6 +73,10 @@ const hasProfileDetails = computed(() =>
         v-if="hasProfileDetails"
         class="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2 lg:grid-cols-1"
       >
+        <div v-if="gear.groupName" class="flex flex-col gap-0.5">
+          <dt class="text-hint">{{ t('gears.profile.groupName') }}</dt>
+          <dd data-testid="gear-profile-group" class="text-body">{{ gear.groupName }}</dd>
+        </div>
         <div v-if="purchaseDateLabel" class="flex flex-col gap-0.5">
           <dt class="text-hint">{{ t('gears.profile.purchaseDate') }}</dt>
           <dd class="text-body">{{ purchaseDateLabel }}</dd>
