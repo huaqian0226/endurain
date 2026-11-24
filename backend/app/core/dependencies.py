@@ -159,3 +159,10 @@ def get_household_catalogue():
     return HouseholdCatalogue(
         settings.WORKBENCH_JIADANG_URL, settings.WORKBENCH_JIADANG_TOKEN, settings.WORKBENCH_JIADANG_USER_ID
     ).read
+
+
+def get_trek_route_tool():
+    """Resolve the owner-scoped TREK transport for route library HTTP requests."""
+    from core.trek_routes import call_trek
+
+    return call_trek

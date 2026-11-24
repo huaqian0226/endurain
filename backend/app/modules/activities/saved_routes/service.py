@@ -2,6 +2,7 @@
 
 import logging
 import math
+from collections.abc import Callable
 from xml.etree import ElementTree as ET
 
 import gpxpy
@@ -10,7 +11,6 @@ from sqlalchemy.orm import Session
 import core.exceptions as errors
 import modules.activities.activity.integration_service as activities
 import modules.activities.saved_routes.crud as crud
-from core.trek_routes import call_trek
 from modules.activities.activity_streams.integration_service import get_stream_for_derivation
 from modules.activities.saved_routes.schema import RouteRead, SendResult, TripChoice
 
@@ -79,7 +79,7 @@ def routes_for(owner: int, db: Session) -> list[RouteRead]:
     return [RouteRead.model_validate(route) for route in crud.all_routes(owner, db)]
 
 
-def trip_choices(owner: int) -> list[TripChoice]:
+def trip_choices(owner: int, call_trek: Callable) -> list[TripChoice]:
     """List active TREK destinations for the mapped owner."""
     return [TripChoice.model_validate(trip) for trip in call_trek(owner, "list_trips", {})["trips"]]
 
@@ -107,7 +107,7 @@ def _gpx(name: str, points: list) -> tuple[str, int]:
     return xml, count
 
 
-def send_route(owner: int, route_id: int, trip_id: int, db: Session) -> SendResult:
+def send_route(owner: int, route_id: int, trip_id: int, db: Session, call_trek: Callable) -> SendResult:
     """Write one tour per destination; retry against TREK's own GPX duplicate check after an interrupted response."""
     route = crud.lock_route(owner, route_id, db)
     if route is None:
@@ -121,12 +121,12 @@ def send_route(owner: int, route_id: int, trip_id: int, db: Session) -> SendResu
         args.update(tour_type="bike", bike_profile=BIKE[route.activity_type])
     elif route.activity_type in RUN:
         args.update(tour_type="run", run_profile=RUN[route.activity_type])
-    tour_id, already_added = _import_matching_tour(owner, args)
+    tour_id, already_added = _import_matching_tour(owner, args, call_trek)
     if tour_id is None:
         # TREK considers a name and start a duplicate, even when two loops diverge.
         alternate = f"{route.name} (Endurain {route.id})"
         args.update(gpx=_gpx(alternate, route.geometry)[0], file_name=alternate + ".gpx")
-        tour_id, already_added = _import_matching_tour(owner, args)
+        tour_id, already_added = _import_matching_tour(owner, args, call_trek)
     if tour_id is None:
         raise errors.ConflictError("TREK already has a different tour using both route names.")
     crud.store_receipt(route_id, trip_id, tour_id, count, db)
@@ -145,7 +145,7 @@ def _geometry(gpx: str) -> list[tuple]:
     ]
 
 
-def _import_matching_tour(owner: int, args: dict) -> tuple[int | None, bool]:
+def _import_matching_tour(owner: int, args: dict, call_trek: Callable) -> tuple[int | None, bool]:
     reply = call_trek(owner, "import_tour_gpx", args)
     if tours := reply.get("tours"):
         return tours[0]["place_id"], False

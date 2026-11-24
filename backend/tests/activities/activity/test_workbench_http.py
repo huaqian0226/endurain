@@ -325,7 +325,7 @@ def test_aggregated_api_reaches_workbench_before_frontend_fallback(client):
     assert response.json()["revision"] == "synthetic-catalogue"
 
 
-def test_saved_route_owns_snapshot_and_sends_once_per_trip(client, monkeypatch):
+def test_saved_route_owns_snapshot_and_sends_once_per_trip(client):
     from xml.etree import ElementTree
 
     import modules.auth.dependencies as auth
@@ -363,7 +363,7 @@ def test_saved_route_owns_snapshot_and_sends_once_per_trip(client, monkeypatch):
     assert route["name"] == "Ridge & River" and route["point_count"] == 2
     assert client.put(endpoint, json={"name": "Retry"}).json() == route
     assert client.get("/workbench/saved-routes").json() == [route]
-    import modules.activities.saved_routes.service as service
+    from core.dependencies import get_trek_route_tool
 
     calls = []
 
@@ -381,7 +381,7 @@ def test_saved_route_owns_snapshot_and_sends_once_per_trip(client, monkeypatch):
         calls.append(args["tripId"])
         return {"tours": [{"place_id": 44}], "skipped": 0}
 
-    monkeypatch.setattr(service, "call_trek", fake_trek)
+    client.app.dependency_overrides[get_trek_route_tool] = lambda: fake_trek
     assert client.get("/workbench/route-trips").json() == [{"id": 7, "title": "Island"}]
     push = f"/workbench/saved-routes/{route['id']}/trips"
     assert client.post(push + "/7").json()["already_added"] is False
@@ -394,7 +394,7 @@ def test_saved_route_owns_snapshot_and_sends_once_per_trip(client, monkeypatch):
     assert client.post(push + "/7").status_code == 404
 
 
-def test_saved_route_recovers_a_native_duplicate_without_overwriting_a_different_loop(monkeypatch):
+def test_saved_route_recovers_a_native_duplicate_without_overwriting_a_different_loop():
     from modules.activities.saved_routes import service
 
     xml, count = service._gpx("River Loop", [[51.0, -1.0, None], [51.02, -1.02, None], [51.0, -1.0, None]])
@@ -410,8 +410,7 @@ def test_saved_route_recovers_a_native_duplicate_without_overwriting_a_different
         assert tool == "export_tour_gpx"
         return {"gpx": remote[args["placeId"]]}
 
-    monkeypatch.setattr(service, "call_trek", trek)
     args = {"tripId": 4, "gpx": xml, "file_name": "River Loop.gpx", "tour_type": "hike"}
-    assert service._import_matching_tour(1, args) == (2, True)
+    assert service._import_matching_tour(1, args, trek) == (2, True)
     del remote[2]
-    assert service._import_matching_tour(1, args) == (None, False)
+    assert service._import_matching_tour(1, args, trek) == (None, False)

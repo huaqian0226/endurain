@@ -44,9 +44,10 @@ def list_saved_routes(
 def list_route_trips(
     _scope: Annotated[Callable, Security(auth.check_auth_scopes, scopes=["activities:read"])],
     user_id: Annotated[int, Depends(auth.get_user_id_from_auth)],
+    trek: Annotated[Callable, Depends(dependencies.get_trek_route_tool)],
 ):
     """List destinations for the connected TREK owner."""
-    return saved.trip_choices(user_id)
+    return saved.trip_choices(user_id, trek)
 
 
 @router.post("/saved-routes/{route_id}/trips/{trip_id}", response_model=schema.SendResult)
@@ -58,6 +59,7 @@ def send_saved_route(
     _scope: Annotated[Callable, Security(auth.check_auth_scopes, scopes=["activities:write"])],
     user_id: Annotated[int, Depends(auth.get_user_id_from_auth)],
     db: Annotated[Session, Depends(database.get_db)],
+    trek: Annotated[Callable, Depends(dependencies.get_trek_route_tool)],
 ):
     """Send a saved route into one selected trip's Tours."""
-    return saved.send_route(user_id, route_id, trip_id, db)
+    return saved.send_route(user_id, route_id, trip_id, db, trek)
