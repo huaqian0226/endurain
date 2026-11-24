@@ -35,11 +35,10 @@ import modules.activities.activity_ingestion.schema as activity_ingestion_schema
 import modules.activities.activity_ingestion.service as activity_ingestion_service
 import modules.auth.dependencies as auth_dependencies
 
-# Bulk import endpoint (JWT auth)
+# Provider refresh endpoint (JWT auth)
 router = APIRouter()
 
-# Separate router for upload endpoint that supports
-# both JWT and API key authentication
+# Unified JWT / API-key endpoints (upload, ingestion job status, bulk import)
 api_upload_router = APIRouter()
 
 
@@ -126,7 +125,7 @@ def read_activity_ingestion_job(
         Callable,
         Security(
             auth_dependencies.check_auth_scopes,
-            scopes=["activities:upload"],
+            scopes=["activities:read"],
         ),
     ],
     db: Annotated[
@@ -146,7 +145,7 @@ def read_activity_ingestion_job(
     return activity_ingestion_service.get_job(job_id, token_user_id, db)
 
 
-@router.post(
+@api_upload_router.post(
     "/bulk-import",
     status_code=status.HTTP_202_ACCEPTED,
     response_model=activity_ingestion_schema.ActivityIngestionJobRead,
@@ -156,10 +155,10 @@ def create_bulk_import_from_archive(
     request: Request,
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     file: UploadFile,
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:write"])],
     db: Annotated[Session, Depends(core_database.get_db)],
     storage: Annotated[
         platform_providers.StorageProvider,
@@ -194,7 +193,7 @@ def create_bulk_import_from_archive(
     )
 
 
-@router.post(
+@api_upload_router.post(
     "/bulk-import/folder",
     status_code=status.HTTP_202_ACCEPTED,
     response_model=activity_ingestion_schema.ActivityIngestionJobRead,
@@ -204,9 +203,9 @@ def create_bulk_import_from_folder(
     request: Request,
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
-    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_scopes, scopes=["activities:write"])],
+    _check_scopes: Annotated[Callable, Security(auth_dependencies.check_auth_scopes, scopes=["activities:write"])],
     db: Annotated[Session, Depends(core_database.get_db)],
     storage: Annotated[
         platform_providers.StorageProvider,

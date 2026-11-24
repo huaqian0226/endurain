@@ -26,7 +26,7 @@ class TestImportBikes:
         db = MagicMock()
         with patch.object(strava_router.gears_crud, "create_multiple_gears") as create:
             strava_router.import_bikes_from_strava_export(
-                request=MagicMock(), file=_upload(BIKES), token_user_id=7, db=db
+                request=MagicMock(), file=_upload(BIKES), _check_scopes=None, token_user_id=7, db=db
             )
 
         gears, user_id, passed_db = create.call_args.args
@@ -37,7 +37,7 @@ class TestImportBikes:
         db = MagicMock()
         with patch.object(strava_router.gears_crud, "create_multiple_gears") as create:
             strava_router.import_bikes_from_strava_export(
-                request=MagicMock(), file=_upload(BIKES_ZH), token_user_id=7, db=db
+                request=MagicMock(), file=_upload(BIKES_ZH), _check_scopes=None, token_user_id=7, db=db
             )
 
         gears, user_id, passed_db = create.call_args.args
@@ -57,7 +57,7 @@ class TestImportBikes:
             pytest.raises(HTTPException),
         ):
             strava_router.import_bikes_from_strava_export(
-                request=MagicMock(), file=_upload(b"Name\nx\n"), token_user_id=7, db=MagicMock()
+                request=MagicMock(), file=_upload(b"Name\nx\n"), _check_scopes=None, token_user_id=7, db=MagicMock()
             )
 
         assert not os.path.exists(seen[0])
@@ -66,7 +66,7 @@ class TestImportBikes:
         big = b"Bike Name,Bike Brand,Bike Model\n" + b"x," * (strava_router._GEAR_CSV_MAX_BYTES)
         with pytest.raises(core_exceptions.PayloadTooLargeError):
             strava_router.import_bikes_from_strava_export(
-                request=MagicMock(), file=_upload(big), token_user_id=7, db=MagicMock()
+                request=MagicMock(), file=_upload(big), _check_scopes=None, token_user_id=7, db=MagicMock()
             )
 
 
@@ -79,7 +79,7 @@ class TestImportShoes:
         ):
             transform.return_value = ["shoe"]
             strava_router.import_shoes_from_strava_export(
-                request=MagicMock(), file=_upload(SHOES), token_user_id=7, db=db
+                request=MagicMock(), file=_upload(SHOES), _check_scopes=None, token_user_id=7, db=db
             )
 
         create.assert_called_once_with(["shoe"], 7, db)
@@ -88,7 +88,7 @@ class TestImportShoes:
         db = MagicMock()
         with patch.object(strava_router.gears_crud, "create_multiple_gears") as create:
             strava_router.import_shoes_from_strava_export(
-                request=MagicMock(), file=_upload(SHOES_ZH), token_user_id=7, db=db
+                request=MagicMock(), file=_upload(SHOES_ZH), _check_scopes=None, token_user_id=7, db=db
             )
 
         gears, user_id, passed_db = create.call_args.args

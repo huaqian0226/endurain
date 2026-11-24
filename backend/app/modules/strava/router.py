@@ -205,9 +205,16 @@ def _save_gear_csv(file: UploadFile) -> tuple[tempfile.TemporaryDirectory, str]:
 def import_bikes_from_strava_export(
     request: Request,
     file: UploadFile,
+    _check_scopes: Annotated[
+        Callable,
+        Security(
+            auth_dependencies.check_auth_scopes,
+            scopes=["gears:write"],
+        ),
+    ],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,
@@ -233,9 +240,16 @@ def import_bikes_from_strava_export(
 def import_shoes_from_strava_export(
     request: Request,
     file: UploadFile,
+    _check_scopes: Annotated[
+        Callable,
+        Security(
+            auth_dependencies.check_auth_scopes,
+            scopes=["gears:write"],
+        ),
+    ],
     token_user_id: Annotated[
         int,
-        Depends(auth_dependencies.get_sub_from_access_token),
+        Depends(auth_dependencies.get_user_id_from_auth),
     ],
     db: Annotated[
         Session,

@@ -12992,6 +12992,7 @@ export interface operations {
             query?: {
                 /** @description The archive layout: `generic` for plain activity files, or a provider export such as `strava`. */
                 source?: string;
+                api_key?: string | null;
             };
             header?: never;
             path?: never;
@@ -13037,6 +13038,7 @@ export interface operations {
             query?: {
                 /** @description The folder layout: `generic` for plain activity files, or a provider export such as `strava`. */
                 source?: string;
+                api_key?: string | null;
             };
             header?: never;
             path?: never;
@@ -19661,7 +19663,9 @@ export interface operations {
     };
     import_bikes_from_strava_export_api_v1_strava_import_bikes_post: {
         parameters: {
-            query?: never;
+            query?: {
+                api_key?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -19703,7 +19707,9 @@ export interface operations {
     };
     import_shoes_from_strava_export_api_v1_strava_import_shoes_post: {
         parameters: {
-            query?: never;
+            query?: {
+                api_key?: string | null;
+            };
             header?: never;
             path?: never;
             cookie?: never;
