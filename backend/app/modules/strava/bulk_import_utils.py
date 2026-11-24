@@ -1,7 +1,9 @@
+import math
 import os
 import tempfile
 from collections.abc import Callable
 from datetime import UTC, datetime
+from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from typing import Any
 
 from fastapi import HTTPException
@@ -74,6 +76,56 @@ def parse_strava_activity_date(raw_date: Any) -> datetime | None:
         except ValueError:
             continue
     return None
+
+
+_MAX_ELEVATION_METERS = 30_000
+
+
+def parse_strava_elevation_meters(raw_value: Any) -> int | None:
+    """Parse a Strava CSV elevation value (metres) to a rounded non-negative int.
+
+    Accepts decimal strings (e.g. ``"180.6"``) or finite non-boolean numbers in
+    ``[0, 30000]`` and rounds half-up to whole metres. Empty, negative,
+    non-finite, out-of-range, or unparseable values return ``None``.
+
+    Args:
+        raw_value: Raw ``Elevation Gain`` or ``Elevation Loss`` value from a
+            Strava CSV row.
+
+    Returns:
+        Rounded elevation in whole metres, or ``None`` when absent or invalid.
+    """
+    if raw_value is None or isinstance(raw_value, bool):
+        return None
+    if isinstance(raw_value, int):
+        parsed = Decimal(raw_value)
+    elif isinstance(raw_value, float):
+        if not math.isfinite(raw_value):
+            return None
+        parsed = Decimal(str(raw_value))
+    elif isinstance(raw_value, str):
+        cleaned = raw_value.strip()
+        if not cleaned:
+            return None
+        try:
+            as_float = float(cleaned)
+        except ValueError:
+            return None
+        if not math.isfinite(as_float):
+            return None
+        try:
+            parsed = Decimal(cleaned)
+        except InvalidOperation:
+            return None
+    else:
+        return None
+
+    if not parsed.is_finite() or parsed < 0 or parsed > _MAX_ELEVATION_METERS:
+        return None
+    rounded = int(parsed.quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+    if rounded > _MAX_ELEVATION_METERS:
+        return None
+    return rounded
 
 
 def parse_activities_manifest(manifest_path: str) -> dict | None:
@@ -182,6 +234,13 @@ def build_metadata_dict(
 
         # Needed for checking for duplicates within multi-file .fit file Strava bulk imports
         strava_activity_metadata["activity date"] = row["Activity Date"]
+
+        elevation_gain = parse_strava_elevation_meters(row.get("Elevation Gain"))
+        if elevation_gain is not None:
+            strava_activity_metadata["elevation_gain"] = elevation_gain
+        elevation_loss = parse_strava_elevation_meters(row.get("Elevation Loss"))
+        if elevation_loss is not None:
+            strava_activity_metadata["elevation_loss"] = elevation_loss
 
         # Gear work
         activity_gear = row["Activity Gear"]

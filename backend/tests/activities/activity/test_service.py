@@ -255,6 +255,21 @@ class TestEditPublishesUpdated:
         mock_crud.edit_activity.assert_called_once_with(1, 5, ANY, db, if_match=None)
         mock_publishers.publish_activity_updated.assert_called_once_with(5, 1, db, changed_fields=["name"])
 
+    @patch("modules.activities.activity.service.activities_contributor_registry")
+    @patch("modules.activities.activity.service.activity_event_publishers")
+    @patch("modules.activities.activity.service.activity_crud")
+    def test_single_edit_publishes_elevation_fields(self, mock_crud, mock_publishers, _registry):
+        import modules.activities.activity.schema as activity_schema
+        from modules.activities.activity import service
+
+        db = MagicMock()
+        service.edit_activity(5, 1, activity_schema.ActivityEdit(elevation_gain=181, elevation_loss=172), db)
+
+        mock_crud.edit_activity.assert_called_once_with(1, 5, ANY, db, if_match=None)
+        mock_publishers.publish_activity_updated.assert_called_once_with(
+            5, 1, db, changed_fields=["elevation_gain", "elevation_loss"]
+        )
+
     @patch("modules.activities.activity.service.gears_dependencies")
     @patch("modules.activities.activity.service.activity_event_publishers")
     @patch("modules.activities.activity.service.activity_crud")

@@ -96,6 +96,43 @@ class TestApplyBulkImportMetadata:
 
         assert activity.name == "Morning Ride"
 
+    def test_valid_elevation_overrides_computed_values(self):
+        activity = _activity()
+        activity.elevation_gain = 105
+        activity.elevation_loss = 98
+
+        sources.apply_bulk_import_metadata(activity, {"elevation_gain": 181, "elevation_loss": 175})
+
+        assert activity.elevation_gain == 181
+        assert activity.elevation_loss == 175
+
+    def test_zero_elevation_is_a_valid_override(self):
+        activity = _activity()
+        activity.elevation_gain = 42
+        activity.elevation_loss = 39
+
+        sources.apply_bulk_import_metadata(activity, {"elevation_gain": 0, "elevation_loss": 0})
+
+        assert activity.elevation_gain == 0
+        assert activity.elevation_loss == 0
+
+    def test_missing_or_invalid_elevation_leaves_computed_values_untouched(self):
+        activity = _activity()
+        activity.elevation_gain = 105
+        activity.elevation_loss = 98
+
+        sources.apply_bulk_import_metadata(activity, {"elevation_gain": None, "elevation_loss": -1})
+        assert activity.elevation_gain == 105
+        assert activity.elevation_loss == 98
+
+        sources.apply_bulk_import_metadata(activity, {"elevation_gain": "180", "elevation_loss": True})
+        assert activity.elevation_gain == 105
+        assert activity.elevation_loss == 98
+
+        sources.apply_bulk_import_metadata(activity, {"elevation_gain": 30001, "elevation_loss": 180})
+        assert activity.elevation_gain == 105
+        assert activity.elevation_loss == 180
+
 
 class TestImportSideArtifacts:
     def test_a_plain_folder_import_has_no_sidecar(self):

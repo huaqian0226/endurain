@@ -289,6 +289,9 @@ STRAVA_CSV_HEADER_ALIASES: dict[str, str] = {
     "活动装备": "Activity Gear",
     "文件名": "Filename",
     "媒体": "Media",
+    "海拔爬升": "Elevation Gain",
+    "海拔下降": "Elevation Loss",
+    "降低海拔": "Elevation Loss",
 }
 
 #: Reverse lookup from canonical English header to its Simplified Chinese alias

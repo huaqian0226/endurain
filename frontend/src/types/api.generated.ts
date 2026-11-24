@@ -5375,6 +5375,9 @@ export interface components {
          *         visibility: 0 - public, 1 - followers, 2 - private.
          *         is_hidden: Whether the activity is hidden.
          *         gear_id: Associated gear identifier.
+         *         equipment_selection: Confirmed or unknown equipment selection.
+         *         elevation_gain: Total elevation gain in meters (0-30000).
+         *         elevation_loss: Total elevation loss in meters (0-30000).
          *         hide_start_time: Hide start time from others.
          *         hide_location: Hide location from others.
          *         hide_map: Hide map from others.
@@ -5393,6 +5396,10 @@ export interface components {
             activity_type?: number | null;
             /** Description */
             description?: string | null;
+            /** Elevation Gain */
+            elevation_gain?: number | null;
+            /** Elevation Loss */
+            elevation_loss?: number | null;
             equipment_selection?: components["schemas"]["EquipmentEdit"] | null;
             /** Gear Id */
             gear_id?: number | null;

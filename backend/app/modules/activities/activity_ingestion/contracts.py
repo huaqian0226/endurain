@@ -57,6 +57,26 @@ def build_import_record(import_initiated_time: str, source_label: str = "Basic b
     }
 
 
+#: Upper bound in metres accepted for bulk-import elevation overrides.
+_MAX_BULK_ELEVATION_METERS = 30_000
+
+
+def _valid_elevation_override(value: Any) -> int | None:
+    """Return ``value`` when it is a valid integer elevation in metres, else ``None``.
+
+    Args:
+        value: Candidate elevation value from bulk-import metadata.
+
+    Returns:
+        Non-negative integer metres within bounds, or ``None``.
+    """
+    if isinstance(value, bool) or not isinstance(value, int):
+        return None
+    if 0 <= value <= _MAX_BULK_ELEVATION_METERS:
+        return value
+    return None
+
+
 def apply_bulk_import_metadata(
     activity: activity_contracts.ActivityCore,
     activity_metadata: dict,
@@ -66,8 +86,9 @@ def apply_bulk_import_metadata(
     The metadata dict is the contract between a source's ``metadata_for`` and
     this function, so a provider subclass supplies richer values without needing
     its own applier. Anything the manifest supplies wins over what the file
-    itself parsed to: an export's manifest generally carries the name and gear the
-    athlete actually curated, while the file holds whatever the device wrote.
+    itself parsed to: an export's manifest generally carries the name, gear, and
+    official elevation totals the athlete actually curated, while the file holds
+    whatever the device wrote.
 
     Args:
         activity: The parsed activity to enrich (mutated in place).
@@ -81,6 +102,12 @@ def apply_bulk_import_metadata(
         activity.gear_id = activity_metadata["gear_id"]
     if activity_metadata.get("import_dict"):
         activity.import_info = activity_metadata["import_dict"]
+    elevation_gain = _valid_elevation_override(activity_metadata.get("elevation_gain"))
+    if elevation_gain is not None:
+        activity.elevation_gain = elevation_gain
+    elevation_loss = _valid_elevation_override(activity_metadata.get("elevation_loss"))
+    if elevation_loss is not None:
+        activity.elevation_loss = elevation_loss
 
 
 @dataclass(frozen=True)

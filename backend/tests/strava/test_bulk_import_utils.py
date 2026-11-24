@@ -235,6 +235,23 @@ class TestParseActivitiesManifest:
         second = parsed["900002.gpx"]
         assert second["Activity Type"] == "外星滑翔"
 
+    def test_chinese_manifest_with_elevation_and_duplicate_headers_parses_elevation(self, tmp_path):
+        header = (
+            "\ufeff活动 ID,活动日期,活动名称,活动类型,活动描述,全程耗时,距离,活动装备,文件名,"
+            "全程耗时,距离,海拔爬升,降低海拔,低海拔,高海拔,媒体\n"
+        )
+        row = (
+            "900010,2026年9月12日 08:00:00,平路起伏合成骑行,骑行,测试海拔,3600,30.0,合成公路车,"
+            "activities/900010.gpx,3600.0,30000.0,180.6,172.4,5.0,62.0,\n"
+        )
+        path = self._write(tmp_path, header + row)
+
+        parsed = bulk_import_utils.parse_activities_manifest(path)
+
+        assert parsed is not None
+        assert parsed["900010.gpx"]["Elevation Gain"] == "180.6"
+        assert parsed["900010.gpx"]["Elevation Loss"] == "172.4"
+
     def test_missing_headers_log_includes_chinese_header_names(self, tmp_path, monkeypatch):
         logger = Mock()
         monkeypatch.setattr(bulk_import_utils, "logger", logger)
@@ -249,6 +266,62 @@ class TestParseActivitiesManifest:
         assert "媒体" in log_text
 
 
+class TestParseStravaElevationMeters:
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("0", 0),
+            ("0.0", 0),
+            ("-0.0", 0),
+            (0, 0),
+            ("0.4", 0),
+            ("0.5", 1),
+            ("2.5", 3),
+            ("180.4", 180),
+            ("180.5", 181),
+            ("180.6", 181),
+            ("  42.5  ", 43),
+            (180, 180),
+            (180.5, 181),
+            ("30000", 30000),
+            ("29999.6", 30000),
+        ],
+    )
+    def test_parses_valid_values_with_half_up_rounding(self, raw, expected):
+        assert bulk_import_utils.parse_strava_elevation_meters(raw) == expected
+
+    @pytest.mark.parametrize(
+        "raw",
+        [
+            None,
+            "",
+            "   ",
+            "-0.1",
+            "-10",
+            -1,
+            "30000.1",
+            "30001",
+            "999999",
+            "nan",
+            "NaN",
+            "inf",
+            "-inf",
+            "Infinity",
+            "1e1000",
+            "abc",
+            "180.6m",
+            True,
+            False,
+            float("nan"),
+            float("inf"),
+            float("-inf"),
+            ["180"],
+        ],
+    )
+    def test_rejects_empty_or_invalid_values(self, raw):
+        assert bulk_import_utils.parse_strava_elevation_meters(raw) is None
+
+
 class TestBuildMetadataAndActivityTypeMapping:
     def test_chinese_manifest_row_builds_canonical_metadata_and_matches_gear(self):
         rows = {
@@ -261,6 +334,8 @@ class TestBuildMetadataAndActivityTypeMapping:
                 "活动装备": "合成公路车",
                 "文件名": "activities/900001.gpx",
                 "媒体": "media/photo.jpg",
+                "海拔爬升": "180.6",
+                "降低海拔": "175.5",
             }
         }
 
@@ -277,7 +352,75 @@ class TestBuildMetadataAndActivityTypeMapping:
         assert metadata["activity type"] == "Ride"
         assert metadata["activity date"] == "2026年9月10日 09:27:12"
         assert metadata["gear_id"] == 42
+        assert metadata["elevation_gain"] == 181
+        assert metadata["elevation_loss"] == 176
         assert metadata["import_dict"]["strava_activity_id"] == 900001
+
+    def test_build_metadata_dict_handles_zero_alias_and_omits_invalid_elevation(self):
+        rows = {
+            "zero.gpx": {
+                "Activity ID": "101",
+                "Activity Date": "Sep 10, 2026, 9:27:12 AM",
+                "Activity Name": "Flat Ride",
+                "Activity Type": "Ride",
+                "Activity Description": "",
+                "Activity Gear": "",
+                "Filename": "activities/zero.gpx",
+                "Media": "",
+                "Elevation Gain": "0",
+                "Elevation Loss": "0.0",
+            },
+            "alt_zh.gpx": {
+                "活动 ID": "102",
+                "活动日期": "2026年9月10日 09:27:12",
+                "活动名称": "备用列名",
+                "活动类型": "骑行",
+                "活动描述": "",
+                "活动装备": "",
+                "文件名": "activities/alt_zh.gpx",
+                "媒体": "",
+                "海拔爬升": " 12.5 ",
+                "海拔下降": " 11.4 ",
+            },
+            "invalid.gpx": {
+                "Activity ID": "103",
+                "Activity Date": "Sep 10, 2026, 9:27:12 AM",
+                "Activity Name": "Bad Elevation",
+                "Activity Type": "Ride",
+                "Activity Description": "",
+                "Activity Gear": "",
+                "Filename": "activities/invalid.gpx",
+                "Media": "",
+                "Elevation Gain": "-5",
+                "Elevation Loss": "",
+            },
+            "old_csv.gpx": {
+                "Activity ID": "104",
+                "Activity Date": "Sep 10, 2026, 9:27:12 AM",
+                "Activity Name": "No Elevation Columns",
+                "Activity Type": "Ride",
+                "Activity Description": "",
+                "Activity Gear": "",
+                "Filename": "activities/old_csv.gpx",
+                "Media": "",
+            },
+        }
+
+        zero_meta = bulk_import_utils.build_metadata_dict("zero.gpx", rows, "2026-09-10T12:00:00Z", {})
+        assert zero_meta["elevation_gain"] == 0
+        assert zero_meta["elevation_loss"] == 0
+
+        alt_meta = bulk_import_utils.build_metadata_dict("alt_zh.gpx", rows, "2026-09-10T12:00:00Z", {})
+        assert alt_meta["elevation_gain"] == 13
+        assert alt_meta["elevation_loss"] == 11
+
+        invalid_meta = bulk_import_utils.build_metadata_dict("invalid.gpx", rows, "2026-09-10T12:00:00Z", {})
+        assert "elevation_gain" not in invalid_meta
+        assert "elevation_loss" not in invalid_meta
+
+        old_meta = bulk_import_utils.build_metadata_dict("old_csv.gpx", rows, "2026-09-10T12:00:00Z", {})
+        assert "elevation_gain" not in old_meta
+        assert "elevation_loss" not in old_meta
 
     @pytest.mark.parametrize(
         ("zh_label", "en_label"),

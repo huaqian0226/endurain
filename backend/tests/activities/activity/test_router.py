@@ -373,6 +373,51 @@ class TestEdit:
         )
         assert resp.status_code == 422
 
+    def test_updates_elevation_gain_and_loss(self, mock_db):
+        with patch("modules.activities.activity.service.activity_crud.edit_activity") as m:
+            m.return_value = _valid_activity(elevation_gain=181, elevation_loss=172)
+            resp = TestClient(_build_app(mock_db)).patch(
+                "/activities/1",
+                headers={"Authorization": "Bearer x"},
+                json={"elevation_gain": 181, "elevation_loss": 172},
+            )
+            assert resp.status_code == 200
+            body = resp.json()
+            assert body["elevation_gain"] == 181
+            assert body["elevation_loss"] == 172
+            sent = m.call_args.args[2]
+            assert sent.model_dump(exclude_unset=True) == {"elevation_gain": 181, "elevation_loss": 172}
+
+    def test_updates_elevation_to_zero(self, mock_db):
+        with patch("modules.activities.activity.service.activity_crud.edit_activity") as m:
+            m.return_value = _valid_activity(elevation_gain=0, elevation_loss=0)
+            resp = TestClient(_build_app(mock_db)).patch(
+                "/activities/1",
+                headers={"Authorization": "Bearer x"},
+                json={"elevation_gain": 0},
+            )
+            assert resp.status_code == 200
+            assert m.call_args.args[2].model_dump(exclude_unset=True) == {"elevation_gain": 0}
+
+    @pytest.mark.parametrize(
+        "payload",
+        [
+            {"elevation_gain": -1},
+            {"elevation_loss": -5},
+            {"elevation_gain": 30_001},
+            {"elevation_loss": 30_001},
+            {"elevation_gain": None},
+            {"elevation_loss": None},
+        ],
+    )
+    def test_rejects_invalid_elevation_values(self, mock_db, payload):
+        resp = TestClient(_build_app(mock_db)).patch(
+            "/activities/1",
+            headers={"Authorization": "Bearer x"},
+            json=payload,
+        )
+        assert resp.status_code == 422
+
 
 class TestEditVisibility:
     def test_success(self, mock_db):

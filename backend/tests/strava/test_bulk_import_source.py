@@ -310,3 +310,188 @@ class TestChineseExportEndToEnd:
         source.import_side_artifacts([MagicMock(id=100)], "555002.gpx", MagicMock())
         store_media.assert_called_once()
         assert store_media.call_args.args[:3] == (100, "en1.jpg", b"fake-en-jpeg")
+
+
+class TestStravaBulkGpxElevationOverride:
+    """Official CSV elevation wins over GPX track computation in Strava bulk imports."""
+
+    @staticmethod
+    def _gentle_slope_gpx() -> str:
+        """Build a synthetic gentle-slope GPX whose per-point deltas sit under the 0.1 m dead zone."""
+        from datetime import UTC, datetime, timedelta
+
+        start = datetime(2026, 9, 10, 9, 27, 12, tzinfo=UTC)
+        points = []
+        # 120 points climbing 0.05 m/s (6 m total) then 120 points descending 0.05 m/s.
+        for i in range(241):
+            ele = 10.0 + (i * 0.05 if i <= 120 else (240 - i) * 0.05)
+            ts = (start + timedelta(seconds=i)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            lat = 31.2304 + i * 0.0001
+            points.append(f'      <trkpt lat="{lat:.6f}" lon="121.4737"><ele>{ele:.2f}</ele><time>{ts}</time></trkpt>')
+        body = "\n".join(points)
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<gpx creator="Synthetic" version="1.1" xmlns="http://www.topografix.com/GPX/1/1">\n'
+            "  <metadata><time>2026-09-10T09:27:12Z</time></metadata>\n"
+            "  <trk>\n"
+            "    <name>平路缓坡合成骑行</name>\n"
+            "    <type>cycling</type>\n"
+            "    <trkseg>\n"
+            f"{body}\n"
+            "    </trkseg>\n"
+            "  </trk>\n"
+            "</gpx>\n"
+        )
+
+    @staticmethod
+    def _steep_gpx() -> str:
+        """Build a synthetic steep GPX whose computed elevation gain/loss are non-zero."""
+        from datetime import UTC, datetime, timedelta
+
+        start = datetime(2026, 9, 10, 9, 27, 12, tzinfo=UTC)
+        points = []
+        for i in range(121):
+            ele = 100.0 + (i * 1.5 if i <= 60 else (120 - i) * 1.5)
+            ts = (start + timedelta(seconds=i)).strftime("%Y-%m-%dT%H:%M:%SZ")
+            lat = 31.2304 + i * 0.0001
+            points.append(f'      <trkpt lat="{lat:.6f}" lon="121.4737"><ele>{ele:.2f}</ele><time>{ts}</time></trkpt>')
+        body = "\n".join(points)
+        return (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<gpx creator="Synthetic" version="1.1" xmlns="http://www.topografix.com/GPX/1/1">\n'
+            "  <metadata><time>2026-09-10T09:27:12Z</time></metadata>\n"
+            "  <trk>\n"
+            "    <name>爬坡合成骑行</name>\n"
+            "    <type>cycling</type>\n"
+            "    <trkseg>\n"
+            f"{body}\n"
+            "    </trkseg>\n"
+            "  </trk>\n"
+            "</gpx>\n"
+        )
+
+    def test_chinese_strava_bulk_gpx_uses_csv_elevation_over_dead_zone_computation(self, tmp_path, monkeypatch):
+        from types import SimpleNamespace
+
+        import modules.activities.activity_file_import.gpx_utils as gpx_utils
+        import modules.activities.activity_ingestion.pipeline_service as pipeline_service
+
+        gpx_path = tmp_path / "666001.gpx"
+        gpx_path.write_text(self._gentle_slope_gpx(), encoding="utf-8")
+
+        # Confirm the GPX parser alone drops the gentle climb to 0 m via the 0.1 m dead zone.
+        direct_parsed = gpx_utils.parse_gpx_file(str(gpx_path), 7, activity_name_input=None, default_timezone="UTC")
+        assert direct_parsed["activity"].elevation_gain == 0
+        assert direct_parsed["activity"].elevation_loss == 0
+
+        manifest_csv = (
+            "活动 ID,活动日期,活动名称,活动类型,活动描述,全程耗时,距离,活动装备,文件名,"
+            "全程耗时,距离,海拔爬升,降低海拔,媒体\n"
+            "666001,2026年9月10日 09:27:12,缓坡官方爬升,骑行,缓坡测试,240,2.7,合成公路车,"
+            "activities/666001.gpx,240.0,2700.0,180.6,172.4,\n"
+        ).encode()
+
+        monkeypatch.setattr(
+            strava_bulk_import_source.strava_bulk_import_utils,
+            "create_gear_dictionary_for_bulk_import",
+            lambda user_id, db: {"合成公路车": [17]},
+        )
+        monkeypatch.setattr(strava_bulk_import_source, "SessionLocal", MagicMock())
+        read_member = {"activities.csv": manifest_csv}.get
+        source = strava_bulk_import_source._build_source(7, "2026-09-10T10:00:00Z", read_member)
+
+        stored_parsed = []
+
+        def _capture_store(parsed, db):
+            stored_parsed.append(parsed)
+            return SimpleNamespace(id=501)
+
+        privacy = SimpleNamespace(
+            default_activity_visibility=0,
+            hide_activity_start_time=False,
+            hide_activity_location=False,
+            hide_activity_map=False,
+            hide_activity_hr=False,
+            hide_activity_power=False,
+            hide_activity_cadence=False,
+            hide_activity_elevation=False,
+            hide_activity_speed=False,
+            hide_activity_pace=False,
+            hide_activity_laps=False,
+            hide_activity_workout_sets_steps=False,
+            hide_activity_gear=False,
+        )
+
+        with (
+            patch.object(
+                pipeline_service.users_integration,
+                "get_user",
+                return_value=SimpleNamespace(id=7, timezone="UTC"),
+            ),
+            patch.object(pipeline_service.users_integration, "get_privacy_settings", return_value=privacy),
+            patch.object(
+                pipeline_service.activity_ingestion_enrichment_service.users_integration,
+                "default_visibility_to_int",
+                return_value=0,
+            ),
+            patch.object(
+                pipeline_service.activity_ingestion_enrichment_service.users_integration,
+                "get_default_gear_for_activity_type",
+                return_value=None,
+            ),
+            patch.object(pipeline_service.activity_integration, "store_parsed_activity", side_effect=_capture_store),
+            patch.object(pipeline_service.activity_file_storage_integration, "store_activity_file_for_ids"),
+        ):
+            pipeline_service.store_activities_from_file(
+                7,
+                str(gpx_path),
+                ".gpx",
+                "666001.gpx",
+                MagicMock(),
+                source=source,
+                storage=MagicMock(),
+            )
+
+        assert len(stored_parsed) == 1
+        persisted = stored_parsed[0]
+        assert persisted.activity.elevation_gain == 181
+        assert persisted.activity.elevation_loss == 172
+        assert persisted.activity.name == "缓坡官方爬升"
+        assert persisted.activity.description == "缓坡测试"
+        assert persisted.activity.gear_id == 17
+        assert persisted.activity.import_info["strava_activity_id"] == 666001
+        assert persisted.source is not None and persisted.source.content_hash
+
+    def test_missing_csv_elevation_falls_back_to_gpx_computed_values(self, tmp_path, monkeypatch):
+        import modules.activities.activity_file_import.gpx_utils as gpx_utils
+
+        gpx_path = tmp_path / "666002.gpx"
+        gpx_path.write_text(self._steep_gpx(), encoding="utf-8")
+        parsed = gpx_utils.parse_gpx_file(str(gpx_path), 7, activity_name_input=None, default_timezone="UTC")
+        activity = parsed["activity"]
+        computed_gain = activity.elevation_gain
+        computed_loss = activity.elevation_loss
+        assert computed_gain is not None and computed_gain > 0
+        assert computed_loss is not None and computed_loss > 0
+
+        manifest_csv = (
+            b"Activity ID,Activity Date,Activity Name,Activity Type,Activity Description,"
+            b"Activity Gear,Filename,Elevation Gain,Elevation Loss,Media\n"
+            b'666002,"Sep 10, 2026, 9:27:12 AM",Steep Climb,Ride,,,activities/666002.gpx,,,\n'
+        )
+        monkeypatch.setattr(
+            strava_bulk_import_source.strava_bulk_import_utils,
+            "create_gear_dictionary_for_bulk_import",
+            lambda user_id, db: {},
+        )
+        monkeypatch.setattr(strava_bulk_import_source, "SessionLocal", MagicMock())
+        read_member = {"activities.csv": manifest_csv}.get
+        source = strava_bulk_import_source._build_source(7, "2026-09-10T10:00:00Z", read_member)
+
+        metadata = source.metadata_for("666002.gpx")
+        assert "elevation_gain" not in metadata
+        assert "elevation_loss" not in metadata
+
+        source.apply_metadata(activity, metadata)
+        assert activity.elevation_gain == computed_gain
+        assert activity.elevation_loss == computed_loss

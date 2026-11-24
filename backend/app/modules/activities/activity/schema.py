@@ -26,6 +26,7 @@ import modules.activities.activity.workbench_schema as workbench_schema
 
 PositiveInt = Annotated[StrictInt, Field(ge=1)]
 VisibilityValue = Annotated[StrictInt, Field(ge=0, le=2)]
+ElevationMeters = Annotated[StrictInt, Field(ge=0, le=30_000)]
 LongText = Annotated[StrictStr, Field(max_length=2500)]
 ActivityName = Annotated[StrictStr, Field(max_length=250)]
 
@@ -328,6 +329,9 @@ class ActivityEdit(BaseModel):
         visibility: 0 - public, 1 - followers, 2 - private.
         is_hidden: Whether the activity is hidden.
         gear_id: Associated gear identifier.
+        equipment_selection: Confirmed or unknown equipment selection.
+        elevation_gain: Total elevation gain in meters (0-30000).
+        elevation_loss: Total elevation loss in meters (0-30000).
         hide_start_time: Hide start time from others.
         hide_location: Hide location from others.
         hide_map: Hide map from others.
@@ -352,6 +356,8 @@ class ActivityEdit(BaseModel):
     is_hidden: StrictBool | None = None
     gear_id: PositiveInt | None = None
     equipment_selection: workbench_schema.EquipmentEdit | None = None
+    elevation_gain: ElevationMeters | None = None
+    elevation_loss: ElevationMeters | None = None
     hide_start_time: StrictBool | None = None
     hide_location: StrictBool | None = None
     hide_map: StrictBool | None = None
@@ -364,3 +370,21 @@ class ActivityEdit(BaseModel):
     hide_laps: StrictBool | None = None
     hide_workout_sets_steps: StrictBool | None = None
     hide_gear: StrictBool | None = None
+
+    @field_validator("elevation_gain", "elevation_loss")
+    @classmethod
+    def _reject_null_elevation(cls, value: int | None) -> int:
+        """Reject explicit null for elevation fields; omit the field to leave it unchanged.
+
+        Args:
+            value: The elevation value in meters provided in the patch payload.
+
+        Returns:
+            The validated non-negative integer elevation.
+
+        Raises:
+            ValueError: When the caller explicitly provides ``None``.
+        """
+        if value is None:
+            raise ValueError("Elevation must be a non-negative integer; omit the field to leave it unchanged")
+        return value

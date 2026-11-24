@@ -260,3 +260,31 @@ class TestNormalizeStravaCsvRow:
         result = strava_utils.normalize_strava_csv_row(row)
 
         assert result == {"Activity ID": "100", None: ["overflow"]}
+
+    def test_normalizes_chinese_and_english_elevation_headers(self):
+        chinese_row = {"海拔爬升": "180.6", "降低海拔": "172.4"}
+        alt_chinese_row = {"海拔爬升": "210.0", "海拔下降": "195.5"}
+        english_row = {"Elevation Gain": "180.6", "Elevation Loss": "172.4"}
+
+        assert strava_utils.normalize_strava_csv_row(chinese_row) == {
+            "Elevation Gain": "180.6",
+            "Elevation Loss": "172.4",
+        }
+        assert strava_utils.normalize_strava_csv_row(alt_chinese_row) == {
+            "Elevation Gain": "210.0",
+            "Elevation Loss": "195.5",
+        }
+        assert strava_utils.normalize_strava_csv_row(english_row) is english_row
+
+    def test_canonical_english_elevation_wins_over_chinese_alias(self):
+        english_first = {"Elevation Gain": "300.0", "海拔爬升": "180.6", "Elevation Loss": "290.0", "降低海拔": "172.4"}
+        chinese_first = {"海拔爬升": "180.6", "Elevation Gain": "300.0", "海拔下降": "172.4", "Elevation Loss": "290.0"}
+
+        assert strava_utils.normalize_strava_csv_row(english_first) == {
+            "Elevation Gain": "300.0",
+            "Elevation Loss": "290.0",
+        }
+        assert strava_utils.normalize_strava_csv_row(chinese_first) == {
+            "Elevation Gain": "300.0",
+            "Elevation Loss": "290.0",
+        }

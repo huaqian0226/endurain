@@ -249,6 +249,25 @@ class TestUtilsFit:
         assert activity.elevation_gain == 250
         assert activity.elevation_loss == 240
 
+    def test_fit_total_ascent_rule_unchanged_without_csv_elevation_override(self):
+        """Non-Strava and elevation-less bulk metadata leave FIT session total_ascent untouched."""
+        import modules.activities.activity_ingestion.contracts as ingestion_contracts
+
+        record = _session_record(None)
+        record["session"]["ele_gain"] = 250
+        record["session"]["ele_loss"] = 240
+        record["ele_waypoints"] = [
+            {"time": "2026-06-20T08:20:00", "ele": 100},
+            {"time": "2026-06-20T08:20:10", "ele": 130},
+        ]
+
+        activity = fit_utils.create_activity_objects([record], user_id=1, default_timezone=_SERVER_TZ)[0]["activity"]
+        ingestion_contracts.apply_bulk_import_metadata(activity, {"name": "FIT Ride"})
+
+        assert activity.name == "FIT Ride"
+        assert activity.elevation_gain == 250
+        assert activity.elevation_loss == 240
+
     def test_create_activity_objects_leaves_distance_zero_without_data(self):
         """No session distance, no GPS track, no avg_speed → distance/pace stay 0."""
         # Category A: an HR-only recording has nothing to derive distance from.

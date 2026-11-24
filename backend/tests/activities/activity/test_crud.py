@@ -1580,3 +1580,58 @@ class TestSumGearUsageByWindow:
         assert result[1].time == 60.0
         # A window that matched nothing still reports zeroes rather than going missing.
         assert result[2].distance == 0.0
+
+
+class TestEditActivityElevationPersistence:
+    """Real SQLite persistence checks for owner-scoped elevation edits."""
+
+    def test_owner_can_update_elevation_including_zero(self, sqlite_session):
+        import modules.activities.activity.crud as crud
+        import modules.activities.activity.schema as schema
+
+        activity = _public_activity(id=1, user_id=1, name="Flat Ride", elevation_gain=95, elevation_loss=90)
+        sqlite_session.add(activity)
+        sqlite_session.commit()
+
+        updated = crud.edit_activity(
+            user_id=1,
+            activity_id=1,
+            activity_attributes=schema.ActivityEdit(elevation_gain=181, elevation_loss=172),
+            db=sqlite_session,
+        )
+        sqlite_session.commit()
+
+        assert updated.elevation_gain == 181
+        assert updated.elevation_loss == 172
+
+        zeroed = crud.edit_activity(
+            user_id=1,
+            activity_id=1,
+            activity_attributes=schema.ActivityEdit(elevation_gain=0, elevation_loss=0),
+            db=sqlite_session,
+        )
+        sqlite_session.commit()
+
+        assert zeroed.elevation_gain == 0
+        assert zeroed.elevation_loss == 0
+
+    def test_non_owner_cannot_update_elevation(self, sqlite_session):
+        import modules.activities.activity.crud as crud
+        import modules.activities.activity.schema as schema
+
+        activity = _public_activity(id=2, user_id=1, name="Owner Ride", elevation_gain=120, elevation_loss=110)
+        sqlite_session.add(activity)
+        sqlite_session.commit()
+
+        with pytest.raises(core_exceptions.NotFoundError):
+            crud.edit_activity(
+                user_id=2,
+                activity_id=2,
+                activity_attributes=schema.ActivityEdit(elevation_gain=500),
+                db=sqlite_session,
+            )
+
+        unchanged = crud.get_activity_by_id(activity_id=2, db=sqlite_session)
+        assert unchanged is not None
+        assert unchanged.elevation_gain == 120
+        assert unchanged.elevation_loss == 110
