@@ -28,6 +28,10 @@ class UsersApiKeys(Base):
         created_at: Key creation timestamp.
         is_active: Whether the key is active. Set to
             False to revoke without deleting.
+        temp_scopes: Optional JSON-encoded list of temporary
+            elevated scopes.
+        temp_scopes_expires_at: Optional expiration timestamp
+            for temporary elevated scopes.
     """
 
     __tablename__ = "users_api_keys"
@@ -85,4 +89,14 @@ class UsersApiKeys(Base):
         default=True,
         nullable=False,
         comment=("Whether the key is active. False = revoked (soft delete)"),
+    )
+    temp_scopes: Mapped[str | None] = mapped_column(
+        Text,
+        nullable=True,
+        comment="JSON-encoded list of temporary elevated scope strings",
+    )
+    temp_scopes_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True),
+        nullable=True,
+        comment="Temporary scope elevation expiration timestamp",
     )

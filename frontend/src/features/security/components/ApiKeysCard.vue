@@ -1,12 +1,13 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Ban, Plus, Trash2 } from '@lucide/vue'
+import { Ban, Clock, Plus, ShieldOff, Trash2 } from '@lucide/vue'
 
-import type { ApiKey, ApiKeyCreateInput } from '@/features/security/types'
+import type { ApiKey, ApiKeyCreateInput, ApiKeyTempScopesInput } from '@/features/security/types'
 
 import ApiKeyCreateDialog from '@/features/security/components/ApiKeyCreateDialog.vue'
 import ApiKeyRevealDialog from '@/features/security/components/ApiKeyRevealDialog.vue'
+import ApiKeyTempScopesDialog from '@/features/security/components/ApiKeyTempScopesDialog.vue'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -14,12 +15,14 @@ import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Skeleton } from '@/components/ui/skeleton'
 import { HttpError } from '@/services/http'
 import { useToasts } from '@/composables/useToasts'
-import { formatMediumDate } from '@/utils/datetime'
+import { formatMediumDate, formatMediumDateTime } from '@/utils/datetime'
 import {
   useApiKeysQuery,
   useCreateApiKeyMutation,
   useDeleteApiKeyMutation,
+  useGrantApiKeyTempScopesMutation,
   useRevokeApiKeyMutation,
+  useRevokeApiKeyTempScopesMutation,
 } from '@/features/security/composables/useSecurity'
 
 defineProps<{
@@ -38,6 +41,8 @@ const apiKeys = computed(() => data.value ?? [])
 const createMutation = useCreateApiKeyMutation()
 const revokeMutation = useRevokeApiKeyMutation()
 const deleteMutation = useDeleteApiKeyMutation()
+const grantTempMutation = useGrantApiKeyTempScopesMutation()
+const revokeTempMutation = useRevokeApiKeyTempScopesMutation()
 
 const isCreateOpen = ref(false)
 const isRevealOpen = ref(false)
@@ -49,10 +54,56 @@ const keyToRevoke = ref<ApiKey | null>(null)
 const isRevokeOpen = ref(false)
 const keyToDelete = ref<ApiKey | null>(null)
 const isDeleteOpen = ref(false)
+const keyToElevate = ref<ApiKey | null>(null)
+const isTempScopesOpen = ref(false)
 
 /** Formats an ISO date in the active locale, or `''` when unparseable. */
 function formatDate(iso: string): string {
   return formatMediumDate(iso, locale.value)
+}
+
+/** Formats an ISO timestamp with time in the active locale. */
+function formatDateTime(iso: string): string {
+  return formatMediumDateTime(iso, locale.value)
+}
+
+/** Returns whether a key is active and not yet expired. */
+function canElevate(key: ApiKey): boolean {
+  if (!key.isActive) {
+    return false
+  }
+  if (!key.expiresAt) {
+    return true
+  }
+  const expiresMs = new Date(key.expiresAt).getTime()
+  return Number.isNaN(expiresMs) || expiresMs > Date.now()
+}
+
+/** Returns whether a key currently has active temporary scopes. */
+function hasActiveTempScopes(key: ApiKey): boolean {
+  return key.tempScopes.length > 0 && key.tempScopesExpiresAt !== null
+}
+
+function openTempScopes(key: ApiKey): void {
+  keyToElevate.value = key
+  isTempScopesOpen.value = true
+}
+
+function onGrantTempScopes(input: ApiKeyTempScopesInput): void {
+  grantTempMutation.mutate(input, {
+    onSuccess: () => {
+      isTempScopesOpen.value = false
+      toasts.success(t('settings.security.apiKeys.tempAccessSuccess'))
+    },
+    onError: () => toasts.error(t('settings.security.apiKeys.tempAccessError')),
+  })
+}
+
+function onRevokeTempScopes(key: ApiKey): void {
+  revokeTempMutation.mutate(key.id, {
+    onSuccess: () => toasts.success(t('settings.security.apiKeys.tempAccessRevokeSuccess')),
+    onError: () => toasts.error(t('settings.security.apiKeys.tempAccessRevokeError')),
+  })
 }
 
 /** Creates the key, then opens the one-time reveal dialog with the raw key. */
@@ -172,6 +223,43 @@ function confirmDelete(): void {
               {{ scope }}
             </Badge>
           </div>
+          <div
+            v-if="hasActiveTempScopes(key)"
+            class="flex flex-col gap-1.5 rounded-input border border-border bg-muted/30 p-2"
+          >
+            <div class="flex flex-wrap items-center gap-1">
+              <Badge variant="secondary">
+                {{ t('settings.security.apiKeys.tempAccessBadgeLabel') }}
+              </Badge>
+              <Badge
+                v-for="scope in key.tempScopes"
+                :key="`temp-${scope}`"
+                variant="secondary"
+                class="font-mono"
+              >
+                {{ scope }}
+              </Badge>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <p class="text-hint">
+                {{
+                  t('settings.security.apiKeys.tempAccessExpiresAt', {
+                    date: formatDateTime(key.tempScopesExpiresAt!),
+                  })
+                }}
+              </p>
+              <Button
+                v-if="canElevate(key)"
+                variant="outline"
+                size="sm"
+                :disabled="revokeTempMutation.isPending.value"
+                @click="onRevokeTempScopes(key)"
+              >
+                <ShieldOff class="size-3.5" aria-hidden="true" />
+                {{ t('settings.security.apiKeys.tempAccessRevoke') }}
+              </Button>
+            </div>
+          </div>
           <p class="text-hint">
             {{ t('settings.security.apiKeys.created', { date: formatDate(key.createdAt) }) }} ·
             {{
@@ -187,7 +275,11 @@ function confirmDelete(): void {
             }}
           </p>
         </div>
-        <div class="flex shrink-0 gap-1">
+        <div class="flex shrink-0 items-center gap-1">
+          <Button v-if="canElevate(key)" variant="outline" size="sm" @click="openTempScopes(key)">
+            <Clock class="size-3.5" aria-hidden="true" />
+            {{ t('settings.security.apiKeys.tempAccess') }}
+          </Button>
           <Button
             v-if="key.isActive"
             variant="ghost"
@@ -215,6 +307,13 @@ function confirmDelete(): void {
       :require-mfa="mfaEnabled"
       :pending="createMutation.isPending.value"
       @submit="onCreate"
+    />
+
+    <ApiKeyTempScopesDialog
+      v-model:open="isTempScopesOpen"
+      :api-key="keyToElevate"
+      :pending="grantTempMutation.isPending.value"
+      @submit="onGrantTempScopes"
     />
 
     <ApiKeyRevealDialog v-model:open="isRevealOpen" :api-key="newApiKey" />

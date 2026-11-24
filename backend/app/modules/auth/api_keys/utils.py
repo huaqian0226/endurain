@@ -2,8 +2,12 @@
 
 import json
 import secrets
+from datetime import UTC, datetime
 
 import modules.auth.token_hashing as token_hashing
+
+MIN_TEMP_SCOPE_DURATION_MINUTES = 1
+MAX_TEMP_SCOPE_DURATION_MINUTES = 10080
 
 SUPPORTED_API_KEY_SCOPES = frozenset(
     {
@@ -106,3 +110,103 @@ def json_to_scopes(scopes_json: str) -> list[str]:
         List of scope strings.
     """
     return json.loads(scopes_json)
+
+
+def utc_now() -> datetime:
+    """Return the current timezone-aware UTC timestamp.
+
+    Returns:
+        Current UTC datetime.
+    """
+    return datetime.now(UTC)
+
+
+def normalize_utc(value: datetime) -> datetime:
+    """Ensure a datetime is timezone-aware in UTC.
+
+    Naive datetimes (e.g. from SQLite test storage) are treated as UTC.
+
+    Args:
+        value: Datetime to normalize.
+
+    Returns:
+        Timezone-aware UTC datetime.
+    """
+    if value.tzinfo is None:
+        return value.replace(tzinfo=UTC)
+    return value.astimezone(UTC)
+
+
+def is_api_key_expired(expires_at: datetime | None, now: datetime | None = None) -> bool:
+    """Check whether an API key's own expiration timestamp has passed.
+
+    Args:
+        expires_at: Optional key expiration timestamp.
+        now: Optional reference UTC datetime (defaults to :func:`utc_now`).
+
+    Returns:
+        True when ``expires_at`` is set and ``now > expires_at``, False otherwise.
+    """
+    if not isinstance(expires_at, datetime):
+        return False
+    current = normalize_utc(now) if now is not None else utc_now()
+    return current > normalize_utc(expires_at)
+
+
+def get_live_temp_scopes(
+    db_key: object,
+    now: datetime | None = None,
+) -> tuple[list[str], datetime | None]:
+    """Return currently active temporary scopes and their UTC expiry for a key.
+
+    A temporary grant is live only when the key is active, not expired, has both
+    ``temp_scopes`` and ``temp_scopes_expires_at`` set, and
+    ``now(UTC) < temp_scopes_expires_at``.
+
+    Args:
+        db_key: API key ORM object (or compatible stub).
+        now: Optional reference UTC datetime (defaults to :func:`utc_now`).
+
+    Returns:
+        Tuple of ``(live_temp_scopes, temp_scopes_expires_at)``. When inactive
+        or expired, returns ``([], None)``.
+    """
+    if getattr(db_key, "is_active", True) is False:
+        return [], None
+
+    current = normalize_utc(now) if now is not None else utc_now()
+    if is_api_key_expired(getattr(db_key, "expires_at", None), current):
+        return [], None
+
+    raw_temp_scopes = getattr(db_key, "temp_scopes", None)
+    temp_expires_at = getattr(db_key, "temp_scopes_expires_at", None)
+    if not isinstance(raw_temp_scopes, str) or not isinstance(temp_expires_at, datetime):
+        return [], None
+
+    expires_utc = normalize_utc(temp_expires_at)
+    if current >= expires_utc:
+        return [], None
+
+    parsed = json_to_scopes(raw_temp_scopes)
+    if not isinstance(parsed, list) or not parsed:
+        return [], None
+
+    return list(dict.fromkeys(parsed)), expires_utc
+
+
+def get_effective_scopes(
+    db_key: object,
+    now: datetime | None = None,
+) -> list[str]:
+    """Compute effective scopes as base scopes union live temporary scopes.
+
+    Args:
+        db_key: API key ORM object (or compatible stub).
+        now: Optional reference UTC datetime (defaults to :func:`utc_now`).
+
+    Returns:
+        Deduplicated list of effective scope strings preserving base-first order.
+    """
+    base_scopes = json_to_scopes(getattr(db_key, "scopes", "[]"))
+    live_temp, _ = get_live_temp_scopes(db_key, now=now)
+    return list(dict.fromkeys([*base_scopes, *live_temp]))

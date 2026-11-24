@@ -30,7 +30,7 @@ never use a module-level singleton.
 from __future__ import annotations
 
 import hmac
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import TYPE_CHECKING, Annotated, Protocol, runtime_checkable
 
 from fastapi import Depends, HTTPException, Request, status
@@ -892,7 +892,8 @@ class DefaultIdentityService:
                 headers={"WWW-Authenticate": "ApiKey"},
             )
 
-        if db_key.expires_at is not None and datetime.now(UTC) > db_key.expires_at:
+        now = auth_api_keys_utils.utc_now()
+        if auth_api_keys_utils.is_api_key_expired(db_key.expires_at, now):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="API key has expired",
@@ -915,7 +916,7 @@ class DefaultIdentityService:
             ),
         )
 
-        scopes = auth_api_keys_utils.json_to_scopes(db_key.scopes)
+        scopes = auth_api_keys_utils.get_effective_scopes(db_key, now=now)
         return self._build_principal(
             user,
             scopes,

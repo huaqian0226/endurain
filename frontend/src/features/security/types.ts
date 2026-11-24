@@ -152,6 +152,9 @@ export type ApiKeyCreatedDto = Schemas['UsersApiKeyCreated']
 /** Create-API-key request body. */
 export type ApiKeyCreateDto = Schemas['UsersApiKeyCreate']
 
+/** Grant/replace temporary API-key scopes request body. */
+export type ApiKeyTempScopesUpdateDto = Schemas['UsersApiKeyTempScopesUpdate']
+
 /**
  * A clean, camel-cased API-key model for the security zone. Mapped from
  * {@link ApiKeyDto} at the service boundary, where the JSON-encoded `scopes`
@@ -160,7 +163,10 @@ export type ApiKeyCreateDto = Schemas['UsersApiKeyCreate']
  * @property id - Stable key identifier (UUID; also the revoke/delete key).
  * @property name - User-friendly label.
  * @property keyPrefix - First characters of the key, shown for identification.
- * @property scopes - The granted scopes (parsed from the wire JSON string).
+ * @property scopes - The granted base scopes (parsed from the wire JSON string).
+ * @property tempScopes - Currently active temporary scopes (empty when inactive/expired).
+ * @property tempScopesExpiresAt - When active temporary scopes expire (ISO), or `null`.
+ * @property effectiveScopes - Effective scopes currently granted (base union temporary).
  * @property expiresAt - When the key expires (ISO), or `null` for no expiry.
  * @property lastUsedAt - When the key was last used (ISO), or `null`.
  * @property createdAt - When the key was created (ISO).
@@ -171,10 +177,22 @@ export interface ApiKey {
   name: string
   keyPrefix: string
   scopes: string[]
+  tempScopes: string[]
+  tempScopesExpiresAt: string | null
+  effectiveScopes: string[]
   expiresAt: string | null
   lastUsedAt: string | null
   createdAt: string
   isActive: boolean
+}
+
+/**
+ * Inputs for granting or replacing temporary scopes on an existing API key.
+ */
+export interface ApiKeyTempScopesInput {
+  id: string
+  scopes: string[]
+  durationMinutes: number
 }
 
 /**

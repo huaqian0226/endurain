@@ -3,7 +3,9 @@ import { storeToRefs } from 'pinia'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/vue-query'
 
 import type {
+  ApiKey,
   ApiKeyCreateInput,
+  ApiKeyTempScopesInput,
   BackupCodesResult,
   MfaEnableInput,
   MfaSetup,
@@ -23,8 +25,10 @@ import {
   fetchBackupCodeStatus,
   fetchMfaStatus,
   fetchSessions,
+  grantApiKeyTempScopes,
   regenerateBackupCodes,
   revokeApiKey,
+  revokeApiKeyTempScopes,
   revokeOtherSessions,
   revokeSession,
   setupMfa,
@@ -260,6 +264,42 @@ export function useDeleteApiKeyMutation() {
   return useMutation<void, Error, string>({
     mutationKey: queryKeys.security.all(),
     mutationFn: (id) => deleteApiKey(id),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.security.apiKeys() })
+    },
+  })
+}
+
+/**
+ * Grants or replaces temporary elevated scopes on an active API key.
+ * Invalidates the API-keys list so active badges and expiry refresh.
+ *
+ * @returns The TanStack Query mutation for granting temporary scopes.
+ */
+export function useGrantApiKeyTempScopesMutation() {
+  const client = useQueryClient()
+
+  return useMutation<ApiKey, Error, ApiKeyTempScopesInput>({
+    mutationKey: queryKeys.security.all(),
+    mutationFn: (input) => grantApiKeyTempScopes(input),
+    onSuccess: () => {
+      void client.invalidateQueries({ queryKey: queryKeys.security.apiKeys() })
+    },
+  })
+}
+
+/**
+ * Revokes temporary elevated scopes early on an active API key.
+ * Invalidates the API-keys list so temporary badges disappear immediately.
+ *
+ * @returns The TanStack Query mutation for revoking temporary scopes.
+ */
+export function useRevokeApiKeyTempScopesMutation() {
+  const client = useQueryClient()
+
+  return useMutation<ApiKey, Error, string>({
+    mutationKey: queryKeys.security.all(),
+    mutationFn: (id) => revokeApiKeyTempScopes(id),
     onSuccess: () => {
       void client.invalidateQueries({ queryKey: queryKeys.security.apiKeys() })
     },

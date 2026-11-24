@@ -4,6 +4,8 @@ import type {
   ApiKeyCreatedDto,
   ApiKeyCreateInput,
   ApiKeyDto,
+  ApiKeyTempScopesInput,
+  ApiKeyTempScopesUpdateDto,
   BackupCodeStatus,
   BackupCodeStatusDto,
   BackupCodesDto,
@@ -118,11 +120,20 @@ function parseScopes(scopesJson: string): string[] {
  * @returns The normalized API-key model.
  */
 export function mapApiKey(dto: ApiKeyDto): ApiKey {
+  const scopes = parseScopes(dto.scopes)
+  const tempScopes = Array.isArray(dto.temp_scopes) ? [...dto.temp_scopes] : []
+  const tempScopesExpiresAt = dto.temp_scopes_expires_at ?? null
+  const effectiveScopes = Array.isArray(dto.effective_scopes)
+    ? [...dto.effective_scopes]
+    : [...new Set([...scopes, ...tempScopes])]
   return {
     id: dto.id,
     name: dto.name,
     keyPrefix: dto.key_prefix,
-    scopes: parseScopes(dto.scopes),
+    scopes,
+    tempScopes,
+    tempScopesExpiresAt,
+    effectiveScopes,
     expiresAt: dto.expires_at ?? null,
     lastUsedAt: dto.last_used_at ?? null,
     createdAt: dto.created_at,
@@ -342,4 +353,40 @@ export async function deleteApiKey(id: string): Promise<void> {
     method: 'DELETE',
     responseType: 'void',
   })
+}
+
+/**
+ * Grants or replaces temporary elevated scopes on an active API key.
+ *
+ * @param input - Key id, temporary scopes, and duration in minutes.
+ * @returns The updated API key with live temporary and effective scopes.
+ * @throws {HttpError} When the request fails (e.g. 400 revoked/expired, 422 invalid input).
+ */
+export async function grantApiKeyTempScopes(input: ApiKeyTempScopesInput): Promise<ApiKey> {
+  const payload: ApiKeyTempScopesUpdateDto = {
+    scopes: input.scopes,
+    duration_minutes: input.durationMinutes,
+  }
+  const dto = await apiFetch<ApiKeyDto>(
+    `/profile/api_keys/${encodeURIComponent(input.id)}/temp_scopes`,
+    {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    },
+  )
+  return mapApiKey(dto)
+}
+
+/**
+ * Revokes temporary elevated scopes early on an active API key.
+ *
+ * @param id - The API-key id.
+ * @returns The updated API key with cleared temporary scopes.
+ * @throws {HttpError} When the request fails.
+ */
+export async function revokeApiKeyTempScopes(id: string): Promise<ApiKey> {
+  const dto = await apiFetch<ApiKeyDto>(`/profile/api_keys/${encodeURIComponent(id)}/temp_scopes`, {
+    method: 'DELETE',
+  })
+  return mapApiKey(dto)
 }

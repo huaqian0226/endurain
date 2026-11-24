@@ -1,7 +1,7 @@
 """CRUD operations for user API keys."""
 
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 from fastapi import HTTPException, status
 from sqlalchemy import select
@@ -211,9 +211,132 @@ def revoke_api_key(
         )
 
     db_api_key.is_active = False
+    db_api_key.temp_scopes = None
+    db_api_key.temp_scopes_expires_at = None
     db.commit()
 
     logger.info("API key revoked", extra=core_logger.context(api_key_id=api_key_id, user_id=user_id))
+
+
+@core_decorators.handle_db_errors
+def set_temp_scopes(
+    api_key_id: str,
+    user_id: int,
+    scopes: list[str],
+    duration_minutes: int,
+    db: Session,
+    now: datetime | None = None,
+) -> api_keys_models.UsersApiKeys:
+    """
+    Grant or replace temporary elevated scopes on an active, non-expired API key.
+
+    Args:
+        api_key_id: The UUID of the API key.
+        user_id: The ID of the owning user.
+        scopes: Validated list of temporary scope strings.
+        duration_minutes: Duration of temporary elevation in minutes.
+        db: SQLAlchemy database session.
+        now: Optional reference UTC datetime (defaults to :func:`api_keys_utils.utc_now`).
+
+    Returns:
+        The updated ``UsersApiKeys`` ORM object.
+
+    Raises:
+        HTTPException: 404 if the key does not exist for the user; 400 if the key
+            is revoked or expired; 500 on database error.
+    """
+    db_api_key = get_api_key_by_id(api_key_id, user_id, db)
+    if db_api_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"API key {api_key_id} not found for user {user_id}",
+        )
+
+    if not db_api_key.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot grant temporary scopes to a revoked API key",
+        )
+
+    current = api_keys_utils.normalize_utc(now) if now is not None else api_keys_utils.utc_now()
+    if api_keys_utils.is_api_key_expired(db_api_key.expires_at, current):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot grant temporary scopes to an expired API key",
+        )
+
+    clean_scopes = list(dict.fromkeys(scopes))
+    db_api_key.temp_scopes = api_keys_utils.scopes_to_json(clean_scopes)
+    db_api_key.temp_scopes_expires_at = current + timedelta(minutes=duration_minutes)
+    db.commit()
+    db.refresh(db_api_key)
+
+    logger.info(
+        "API key temporary scopes granted",
+        extra=core_logger.context(
+            api_key_id=api_key_id,
+            user_id=user_id,
+            duration_minutes=duration_minutes,
+        ),
+    )
+
+    return db_api_key
+
+
+@core_decorators.handle_db_errors
+def clear_temp_scopes(
+    api_key_id: str,
+    user_id: int,
+    db: Session,
+    now: datetime | None = None,
+) -> api_keys_models.UsersApiKeys:
+    """
+    Revoke temporary elevated scopes early on an active, non-expired API key.
+
+    Args:
+        api_key_id: The UUID of the API key.
+        user_id: The ID of the owning user.
+        db: SQLAlchemy database session.
+        now: Optional reference UTC datetime (defaults to :func:`api_keys_utils.utc_now`).
+
+    Returns:
+        The updated ``UsersApiKeys`` ORM object.
+
+    Raises:
+        HTTPException: 404 if the key does not exist for the user; 400 if the key
+            is revoked or expired; 500 on database error.
+    """
+    db_api_key = get_api_key_by_id(api_key_id, user_id, db)
+    if db_api_key is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"API key {api_key_id} not found for user {user_id}",
+        )
+
+    if not db_api_key.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify temporary scopes on a revoked API key",
+        )
+
+    current = api_keys_utils.normalize_utc(now) if now is not None else api_keys_utils.utc_now()
+    if api_keys_utils.is_api_key_expired(db_api_key.expires_at, current):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot modify temporary scopes on an expired API key",
+        )
+
+    db_api_key.temp_scopes = None
+    db_api_key.temp_scopes_expires_at = None
+    db.commit()
+    db.refresh(db_api_key)
+
+    logger.info(
+        "API key temporary scopes revoked",
+        extra=core_logger.context(api_key_id=api_key_id, user_id=user_id),
+    )
+
+    return db_api_key
 
 
 @core_decorators.handle_db_errors

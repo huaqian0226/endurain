@@ -19,6 +19,34 @@ import modules.users.users.crud as users_crud
 router = APIRouter()
 
 
+def _serialize_api_key(db_api_key: object) -> api_keys_schema.UsersApiKeyRead:
+    """Build a ``UsersApiKeyRead`` response with live temporary and effective scopes.
+
+    Args:
+        db_api_key: API key ORM object.
+
+    Returns:
+        Serialized ``UsersApiKeyRead`` payload.
+    """
+    now = api_keys_utils.utc_now()
+    live_temp_scopes, live_temp_expires_at = api_keys_utils.get_live_temp_scopes(db_api_key, now=now)
+    effective_scopes = api_keys_utils.get_effective_scopes(db_api_key, now=now)
+    return api_keys_schema.UsersApiKeyRead(
+        id=db_api_key.id,  # type: ignore[attr-defined]
+        user_id=db_api_key.user_id,  # type: ignore[attr-defined]
+        name=db_api_key.name,  # type: ignore[attr-defined]
+        key_prefix=db_api_key.key_prefix,  # type: ignore[attr-defined]
+        scopes=db_api_key.scopes,  # type: ignore[attr-defined]
+        expires_at=db_api_key.expires_at,  # type: ignore[attr-defined]
+        last_used_at=db_api_key.last_used_at,  # type: ignore[attr-defined]
+        created_at=db_api_key.created_at,  # type: ignore[attr-defined]
+        is_active=db_api_key.is_active,  # type: ignore[attr-defined]
+        temp_scopes=live_temp_scopes,
+        temp_scopes_expires_at=live_temp_expires_at,
+        effective_scopes=effective_scopes,
+    )
+
+
 @router.get(
     "",
     response_model=list[api_keys_schema.UsersApiKeyRead],
@@ -42,7 +70,8 @@ async def get_user_api_keys(
         List of API key objects. Raw keys and hashes
         are never included.
     """
-    return auth_api_keys_crud.get_api_keys_by_user_id(token_user_id, db)  # type: ignore[return-value]
+    keys = auth_api_keys_crud.get_api_keys_by_user_id(token_user_id, db)
+    return [_serialize_api_key(key) for key in keys]
 
 
 @router.post(
@@ -118,19 +147,88 @@ async def create_user_api_key(
         ) from exc
 
     db_api_key, raw_key = auth_api_keys_crud.create_api_key(token_user_id, data, db)
+    serialized = _serialize_api_key(db_api_key)
 
     return api_keys_schema.UsersApiKeyCreated(
-        id=db_api_key.id,
-        user_id=db_api_key.user_id,
-        name=db_api_key.name,
-        key_prefix=db_api_key.key_prefix,
-        scopes=db_api_key.scopes,
-        expires_at=db_api_key.expires_at,
-        last_used_at=db_api_key.last_used_at,
-        created_at=db_api_key.created_at,
-        is_active=db_api_key.is_active,
+        **serialized.model_dump(),
         key=raw_key,
     )
+
+
+@router.put(
+    "/{api_key_id}/temp_scopes",
+    response_model=api_keys_schema.UsersApiKeyRead,
+    status_code=status.HTTP_200_OK,
+)
+async def grant_user_api_key_temp_scopes(
+    api_key_id: str,
+    data: api_keys_schema.UsersApiKeyTempScopesUpdate,
+    token_user_id: Annotated[
+        int,
+        Depends(auth_internal_dependencies.get_sub_from_access_token),
+    ],
+    db: Annotated[Session, Depends(core_database.get_db)],
+) -> api_keys_schema.UsersApiKeyRead:
+    """
+    Grant or replace temporary elevated scopes on an active API key.
+
+    JWT-only: API keys cannot elevate themselves or other keys.
+
+    Args:
+        api_key_id: UUID of the API key to elevate.
+        data: Temporary scopes and duration in minutes (1 to 10080).
+        token_user_id: User ID from access token.
+        db: Database session dependency.
+
+    Returns:
+        Updated API key object with live temporary and effective scopes.
+
+    Raises:
+        HTTPException: 404 if the key does not belong to the caller; 400 if
+            the key is revoked or expired.
+    """
+    updated = auth_api_keys_crud.set_temp_scopes(
+        api_key_id,
+        token_user_id,
+        data.scopes,
+        data.duration_minutes,
+        db,
+    )
+    return _serialize_api_key(updated)
+
+
+@router.delete(
+    "/{api_key_id}/temp_scopes",
+    response_model=api_keys_schema.UsersApiKeyRead,
+    status_code=status.HTTP_200_OK,
+)
+async def revoke_user_api_key_temp_scopes(
+    api_key_id: str,
+    token_user_id: Annotated[
+        int,
+        Depends(auth_internal_dependencies.get_sub_from_access_token),
+    ],
+    db: Annotated[Session, Depends(core_database.get_db)],
+) -> api_keys_schema.UsersApiKeyRead:
+    """
+    Revoke temporary elevated scopes early on an active API key.
+
+    JWT-only: API keys cannot manage temporary scopes.
+
+    Args:
+        api_key_id: UUID of the API key.
+        token_user_id: User ID from access token.
+        db: Database session dependency.
+
+    Returns:
+        Updated API key object with cleared temporary scopes.
+
+    Raises:
+        HTTPException: 404 if the key does not belong to the caller; 400 if
+            the key is revoked or expired.
+    """
+    updated = auth_api_keys_crud.clear_temp_scopes(api_key_id, token_user_id, db)
+    return _serialize_api_key(updated)
 
 
 @router.patch(
