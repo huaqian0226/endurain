@@ -40,6 +40,16 @@ export function mapGear(dto: GearDto): Gear {
     createdAt: dto.created_at ?? null,
     initialKms: dto.initial_kms ?? null,
     purchaseValue: dto.purchase_value ?? null,
+    purchaseDate: dto.purchase_date ?? null,
+    retiredDate: dto.retired_date ?? null,
+    frameNumber: dto.frame_number ?? null,
+    size: dto.size ?? null,
+    color: dto.color ?? null,
+    modelYear: dto.model_year ?? null,
+    groupset: dto.groupset ?? null,
+    specs: dto.specs ?? null,
+    purchaseSource: dto.purchase_source ?? null,
+    notes: dto.notes ?? null,
     stravaGearId: dto.strava_gear_id ?? null,
     garminConnectGearId: dto.garminconnect_gear_id ?? null,
   }
@@ -78,6 +88,16 @@ function toGearWireFields(input: GearInput) {
     created_at: input.createdAt,
     initial_kms: input.initialKms,
     purchase_value: input.purchaseValue,
+    purchase_date: input.purchaseDate,
+    retired_date: input.retiredDate,
+    frame_number: input.frameNumber,
+    size: input.size,
+    color: input.color,
+    model_year: input.modelYear,
+    groupset: input.groupset,
+    specs: input.specs,
+    purchase_source: input.purchaseSource,
+    notes: input.notes,
   }
 }
 

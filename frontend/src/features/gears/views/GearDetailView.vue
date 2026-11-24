@@ -10,6 +10,7 @@ import GearActivitiesPanel from '@/features/gears/components/GearActivitiesPanel
 import GearComponentsPanel from '@/features/gears/components/GearComponentsPanel.vue'
 import GearFormDialog from '@/features/gears/components/GearFormDialog.vue'
 import GearInfoCard from '@/features/gears/components/GearInfoCard.vue'
+import GearProfileCard from '@/features/gears/components/GearProfileCard.vue'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
@@ -189,16 +190,18 @@ function confirmDelete(): void {
         <p class="text-body">{{ typeLabel }}</p>
       </header>
       <!-- v1-style layout: a single stacked column on mobile, a three-column row
-           (gear info | components | activities) from lg up. -->
+           (gear info + profile | components | activities) from lg up. -->
       <div class="grid gap-3 lg:grid-cols-12 lg:items-start">
-        <GearInfoCard
-          class="lg:col-span-4"
-          :gear="gear"
-          :units="units"
-          :currency="currency"
-          @edit="openEdit"
-          @delete="openDelete"
-        />
+        <div class="flex flex-col gap-3 lg:col-span-4">
+          <GearInfoCard
+            :gear="gear"
+            :units="units"
+            :currency="currency"
+            @edit="openEdit"
+            @delete="openDelete"
+          />
+          <GearProfileCard :gear="gear" />
+        </div>
         <GearComponentsPanel
           class="lg:col-span-4"
           :gear="gear"

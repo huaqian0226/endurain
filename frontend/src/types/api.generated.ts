@@ -6457,10 +6457,20 @@ export interface components {
        */
       brand?: string | null
       /**
+       * Color
+       * @description Gear color
+       */
+      color?: string | null
+      /**
        * Created At
        * @description Gear creation timestamp
        */
       created_at?: string | null
+      /**
+       * Frame Number
+       * @description Frame or serial number
+       */
+      frame_number?: string | null
       /**
        * Garminconnect Gear Id
        * @description Garmin Connect gear ID
@@ -6468,6 +6478,11 @@ export interface components {
       garminconnect_gear_id?: string | null
       /** @description Gear type identifier */
       gear_type: components['schemas']['GearType']
+      /**
+       * Groupset
+       * @description Groupset or drivetrain specification
+       */
+      groupset?: string | null
       /**
        * Initial Kms
        * @description Initial kilometers
@@ -6479,15 +6494,50 @@ export interface components {
        */
       model?: string | null
       /**
+       * Model Year
+       * @description Retail model year
+       */
+      model_year?: number | null
+      /**
        * Nickname
        * @description Gear display nickname
        */
       nickname: string
       /**
+       * Notes
+       * @description Notes and history (multiline)
+       */
+      notes?: string | null
+      /**
+       * Purchase Date
+       * @description Gear purchase date
+       */
+      purchase_date?: string | null
+      /**
+       * Purchase Source
+       * @description Purchase or acquisition source
+       */
+      purchase_source?: string | null
+      /**
        * Purchase Value
        * @description Purchase value
        */
       purchase_value?: number | null
+      /**
+       * Retired Date
+       * @description Gear retired date
+       */
+      retired_date?: string | null
+      /**
+       * Size
+       * @description Gear size
+       */
+      size?: string | null
+      /**
+       * Specs
+       * @description Additional specifications (multiline)
+       */
+      specs?: string | null
       /**
        * Strava Gear Id
        * @description Strava gear ID
@@ -6520,10 +6570,20 @@ export interface components {
        */
       brand?: string | null
       /**
+       * Color
+       * @description Gear color
+       */
+      color?: string | null
+      /**
        * Created At
        * @description Gear creation timestamp
        */
       created_at?: string | null
+      /**
+       * Frame Number
+       * @description Frame or serial number
+       */
+      frame_number?: string | null
       /**
        * Garminconnect Gear Id
        * @description Garmin Connect gear ID
@@ -6531,6 +6591,11 @@ export interface components {
       garminconnect_gear_id?: string | null
       /** @description Gear type identifier */
       gear_type: components['schemas']['GearType']
+      /**
+       * Groupset
+       * @description Groupset or drivetrain specification
+       */
+      groupset?: string | null
       /**
        * Id
        * @description Unique identifier
@@ -6547,15 +6612,50 @@ export interface components {
        */
       model?: string | null
       /**
+       * Model Year
+       * @description Retail model year
+       */
+      model_year?: number | null
+      /**
        * Nickname
        * @description Gear display nickname
        */
       nickname: string
       /**
+       * Notes
+       * @description Notes and history (multiline)
+       */
+      notes?: string | null
+      /**
+       * Purchase Date
+       * @description Gear purchase date
+       */
+      purchase_date?: string | null
+      /**
+       * Purchase Source
+       * @description Purchase or acquisition source
+       */
+      purchase_source?: string | null
+      /**
        * Purchase Value
        * @description Purchase value
        */
       purchase_value?: number | null
+      /**
+       * Retired Date
+       * @description Gear retired date
+       */
+      retired_date?: string | null
+      /**
+       * Size
+       * @description Gear size
+       */
+      size?: string | null
+      /**
+       * Specs
+       * @description Additional specifications (multiline)
+       */
+      specs?: string | null
       /**
        * Strava Gear Id
        * @description Strava gear ID
@@ -6605,10 +6705,20 @@ export interface components {
        */
       brand?: string | null
       /**
+       * Color
+       * @description Gear color
+       */
+      color?: string | null
+      /**
        * Created At
        * @description Gear creation timestamp
        */
       created_at?: string | null
+      /**
+       * Frame Number
+       * @description Frame or serial number
+       */
+      frame_number?: string | null
       /**
        * Garminconnect Gear Id
        * @description Garmin Connect gear ID
@@ -6616,6 +6726,11 @@ export interface components {
       garminconnect_gear_id?: string | null
       /** @description Gear type identifier */
       gear_type: components['schemas']['GearType']
+      /**
+       * Groupset
+       * @description Groupset or drivetrain specification
+       */
+      groupset?: string | null
       /**
        * Id
        * @description Unique identifier
@@ -6632,15 +6747,50 @@ export interface components {
        */
       model?: string | null
       /**
+       * Model Year
+       * @description Retail model year
+       */
+      model_year?: number | null
+      /**
        * Nickname
        * @description Gear display nickname
        */
       nickname: string
       /**
+       * Notes
+       * @description Notes and history (multiline)
+       */
+      notes?: string | null
+      /**
+       * Purchase Date
+       * @description Gear purchase date
+       */
+      purchase_date?: string | null
+      /**
+       * Purchase Source
+       * @description Purchase or acquisition source
+       */
+      purchase_source?: string | null
+      /**
        * Purchase Value
        * @description Purchase value
        */
       purchase_value?: number | null
+      /**
+       * Retired Date
+       * @description Gear retired date
+       */
+      retired_date?: string | null
+      /**
+       * Size
+       * @description Gear size
+       */
+      size?: string | null
+      /**
+       * Specs
+       * @description Additional specifications (multiline)
+       */
+      specs?: string | null
       /**
        * Strava Gear Id
        * @description Strava gear ID
@@ -6687,10 +6837,20 @@ export interface components {
        */
       brand?: string | null
       /**
+       * Color
+       * @description Gear color
+       */
+      color?: string | null
+      /**
        * Created At
        * @description Gear creation timestamp
        */
       created_at?: string | null
+      /**
+       * Frame Number
+       * @description Frame or serial number
+       */
+      frame_number?: string | null
       /**
        * Garminconnect Gear Id
        * @description Garmin Connect gear ID
@@ -6698,6 +6858,11 @@ export interface components {
       garminconnect_gear_id?: string | null
       /** @description Gear type identifier */
       gear_type: components['schemas']['GearType']
+      /**
+       * Groupset
+       * @description Groupset or drivetrain specification
+       */
+      groupset?: string | null
       /**
        * Id
        * @description Unique identifier
@@ -6714,15 +6879,50 @@ export interface components {
        */
       model?: string | null
       /**
+       * Model Year
+       * @description Retail model year
+       */
+      model_year?: number | null
+      /**
        * Nickname
        * @description Gear display nickname
        */
       nickname: string
       /**
+       * Notes
+       * @description Notes and history (multiline)
+       */
+      notes?: string | null
+      /**
+       * Purchase Date
+       * @description Gear purchase date
+       */
+      purchase_date?: string | null
+      /**
+       * Purchase Source
+       * @description Purchase or acquisition source
+       */
+      purchase_source?: string | null
+      /**
        * Purchase Value
        * @description Purchase value
        */
       purchase_value?: number | null
+      /**
+       * Retired Date
+       * @description Gear retired date
+       */
+      retired_date?: string | null
+      /**
+       * Size
+       * @description Gear size
+       */
+      size?: string | null
+      /**
+       * Specs
+       * @description Additional specifications (multiline)
+       */
+      specs?: string | null
       /**
        * Strava Gear Id
        * @description Strava gear ID

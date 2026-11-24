@@ -19,6 +19,16 @@ function makeGear(overrides: Partial<Gear> = {}): Gear {
     createdAt: null,
     initialKms: null,
     purchaseValue: null,
+    purchaseDate: null,
+    retiredDate: null,
+    frameNumber: null,
+    size: null,
+    color: null,
+    modelYear: null,
+    groupset: null,
+    specs: null,
+    purchaseSource: null,
+    notes: null,
     stravaGearId: null,
     garminConnectGearId: null,
     ...overrides,
@@ -39,6 +49,13 @@ describe('GearBadges', () => {
   it('shows the inactive badge when the gear is inactive', () => {
     const wrapper = mountBadges(makeGear({ active: false }))
     expect(wrapper.text()).toContain('Inactive')
+  })
+
+  it('shows the retired badge with date when retiredDate is set', () => {
+    const wrapper = mountBadges(makeGear({ active: false, retiredDate: '2026-05-15' }))
+    expect(wrapper.text()).toContain('Retired')
+    expect(wrapper.text()).toContain('2026')
+    expect(wrapper.text()).not.toContain('Inactive')
   })
 
   it('shows the Strava badge when linked to a Strava gear', () => {

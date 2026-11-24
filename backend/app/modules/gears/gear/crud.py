@@ -1,3 +1,4 @@
+from datetime import date as date_type
 from typing import Any, overload
 
 from fastapi import HTTPException, status
@@ -16,6 +17,23 @@ logger = core_logger.get_logger(__name__)
 
 # Fields that must never be reassigned through an update payload
 _IMMUTABLE_FIELDS: frozenset[str] = frozenset({"id", "user_id"})
+
+# Nullable profile fields that an update payload may explicitly clear to None
+# when present, while omitting them preserves existing stored values.
+_CLEARABLE_PROFILE_FIELDS: frozenset[str] = frozenset(
+    {
+        "purchase_date",
+        "retired_date",
+        "frame_number",
+        "size",
+        "color",
+        "model_year",
+        "groupset",
+        "specs",
+        "purchase_source",
+        "notes",
+    }
+)
 
 # Gear text fields trimmed of surrounding whitespace on write
 _TEXT_FIELDS: tuple[str, ...] = ("brand", "model", "nickname")
@@ -600,9 +618,19 @@ def edit_gear(
     )
 
     for key, value in gear_data.items():
-        if key in _IMMUTABLE_FIELDS or value is None:
+        if key in _IMMUTABLE_FIELDS:
+            continue
+        if value is None and key not in _CLEARABLE_PROFILE_FIELDS:
             continue
         setattr(db_gear, key, value)
+
+    purchase_date = getattr(db_gear, "purchase_date", None)
+    retired_date = getattr(db_gear, "retired_date", None)
+    if isinstance(purchase_date, date_type) and isinstance(retired_date, date_type) and retired_date < purchase_date:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            detail="retired_date must be on or after purchase_date",
+        )
 
     db.commit()
     db.refresh(db_gear)

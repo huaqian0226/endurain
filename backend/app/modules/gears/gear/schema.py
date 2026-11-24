@@ -1,7 +1,9 @@
 """Gear schema definitions."""
 
+from datetime import date as date_type
 from datetime import datetime as datetime_type
 from enum import IntEnum
+from typing import Self
 
 from pydantic import (
     BaseModel,
@@ -11,6 +13,8 @@ from pydantic import (
     StrictFloat,
     StrictInt,
     StrictStr,
+    field_validator,
+    model_validator,
 )
 
 
@@ -52,6 +56,16 @@ class GearBase(BaseModel):
         active: Whether the gear is active.
         initial_kms: Initial kilometers.
         purchase_value: Purchase value.
+        purchase_date: Purchase date (calendar date).
+        retired_date: Retired date (calendar date).
+        frame_number: Frame or serial number.
+        size: Frame or gear size.
+        color: Gear color.
+        model_year: Retail model year (1900-2100).
+        groupset: Groupset or drivetrain specification.
+        specs: Additional gear specifications (multiline).
+        purchase_source: Purchase or acquisition source.
+        notes: Free-form notes and history (multiline).
         strava_gear_id: Strava gear ID.
         garminconnect_gear_id: Garmin gear ID.
     """
@@ -93,6 +107,55 @@ class GearBase(BaseModel):
         ge=0,
         description="Purchase value",
     )
+    purchase_date: date_type | None = Field(
+        default=None,
+        description="Gear purchase date",
+    )
+    retired_date: date_type | None = Field(
+        default=None,
+        description="Gear retired date",
+    )
+    frame_number: StrictStr | None = Field(
+        default=None,
+        max_length=100,
+        description="Frame or serial number",
+    )
+    size: StrictStr | None = Field(
+        default=None,
+        max_length=50,
+        description="Gear size",
+    )
+    color: StrictStr | None = Field(
+        default=None,
+        max_length=100,
+        description="Gear color",
+    )
+    model_year: StrictInt | None = Field(
+        default=None,
+        ge=1900,
+        le=2100,
+        description="Retail model year",
+    )
+    groupset: StrictStr | None = Field(
+        default=None,
+        max_length=250,
+        description="Groupset or drivetrain specification",
+    )
+    specs: StrictStr | None = Field(
+        default=None,
+        max_length=4000,
+        description="Additional specifications (multiline)",
+    )
+    purchase_source: StrictStr | None = Field(
+        default=None,
+        max_length=250,
+        description="Purchase or acquisition source",
+    )
+    notes: StrictStr | None = Field(
+        default=None,
+        max_length=8000,
+        description="Notes and history (multiline)",
+    )
     strava_gear_id: StrictStr | None = Field(
         default=None,
         max_length=45,
@@ -109,6 +172,31 @@ class GearBase(BaseModel):
         extra="forbid",
         validate_assignment=True,
     )
+
+    @field_validator(
+        "frame_number",
+        "size",
+        "color",
+        "groupset",
+        "specs",
+        "purchase_source",
+        "notes",
+        mode="before",
+    )
+    @classmethod
+    def _normalize_optional_profile_text(cls, value: object) -> object:
+        """Trim surrounding whitespace and convert blank profile text to None."""
+        if isinstance(value, str):
+            stripped = value.strip()
+            return stripped or None
+        return value
+
+    @model_validator(mode="after")
+    def _validate_retired_not_before_purchase(self) -> Self:
+        """Ensure retired_date is on or after purchase_date when both are set."""
+        if self.purchase_date is not None and self.retired_date is not None and self.retired_date < self.purchase_date:
+            raise ValueError("retired_date must be on or after purchase_date")
+        return self
 
 
 class GearCreate(GearBase):

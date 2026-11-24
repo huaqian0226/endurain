@@ -790,7 +790,7 @@ class TestModuleLevelConstants:
     def test_api_version(self):
         from core.config import API_VERSION
 
-        assert API_VERSION == "v0.20.2+workbench.4"
+        assert API_VERSION == "v0.20.2+workbench.5"
 
     def test_license_constants(self):
         from core.config import LICENSE_IDENTIFIER, LICENSE_NAME, LICENSE_URL

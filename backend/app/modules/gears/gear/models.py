@@ -1,10 +1,11 @@
 """Gear database models."""
 
+from datetime import date as date_type
 from datetime import datetime as datetime_type
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, ForeignKey, Numeric, String
+from sqlalchemy import Date, DateTime, ForeignKey, Numeric, SmallInteger, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
@@ -31,6 +32,16 @@ class Gear(Base):
         active: Whether the gear is active.
         initial_kms: Initial kilometers.
         purchase_value: Gear purchase value.
+        purchase_date: Gear purchase date (calendar date).
+        retired_date: Gear retired date (calendar date).
+        frame_number: Frame or serial number.
+        size: Frame or gear size.
+        color: Gear color.
+        model_year: Retail model year (distinct from manufacture date).
+        groupset: Groupset or drivetrain specification.
+        specs: Additional gear specifications (multiline).
+        purchase_source: Where the gear was purchased or acquired.
+        notes: Free-form notes and history (multiline).
         strava_gear_id: Strava gear ID.
         garminconnect_gear_id: Garmin gear ID.
         users: Relationship to Users model.
@@ -110,6 +121,56 @@ class Gear(Base):
         Numeric(precision=11, scale=2),
         nullable=True,
         comment="Gear purchase value",
+    )
+    purchase_date: Mapped[date_type | None] = mapped_column(
+        Date(),
+        nullable=True,
+        comment="Gear purchase date (Date)",
+    )
+    retired_date: Mapped[date_type | None] = mapped_column(
+        Date(),
+        nullable=True,
+        comment="Gear retired date (Date)",
+    )
+    frame_number: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Gear frame or serial number",
+    )
+    size: Mapped[str | None] = mapped_column(
+        String(50),
+        nullable=True,
+        comment="Gear size",
+    )
+    color: Mapped[str | None] = mapped_column(
+        String(100),
+        nullable=True,
+        comment="Gear color",
+    )
+    model_year: Mapped[int | None] = mapped_column(
+        SmallInteger(),
+        nullable=True,
+        comment="Gear retail model year",
+    )
+    groupset: Mapped[str | None] = mapped_column(
+        String(250),
+        nullable=True,
+        comment="Gear groupset or drivetrain",
+    )
+    specs: Mapped[str | None] = mapped_column(
+        Text(),
+        nullable=True,
+        comment="Additional gear specifications (multiline)",
+    )
+    purchase_source: Mapped[str | None] = mapped_column(
+        String(250),
+        nullable=True,
+        comment="Gear purchase or acquisition source",
+    )
+    notes: Mapped[str | None] = mapped_column(
+        Text(),
+        nullable=True,
+        comment="Gear notes and history (multiline)",
     )
     strava_gear_id: Mapped[str | None] = mapped_column(
         String(45),

@@ -28,6 +28,16 @@ export type GearType = Schemas['GearType']
  * @property createdAt - Acquisition/creation date (ISO string), or `null`.
  * @property initialKms - Initial distance offset in kilometres, or `null`.
  * @property purchaseValue - Purchase price in the user's currency, or `null`.
+ * @property purchaseDate - Purchase calendar date (`YYYY-MM-DD`), or `null`.
+ * @property retiredDate - Retirement calendar date (`YYYY-MM-DD`), or `null`.
+ * @property frameNumber - Frame or serial number, or `null`.
+ * @property size - Frame or gear size, or `null`.
+ * @property color - Gear color, or `null`.
+ * @property modelYear - Retail model year (1900–2100), or `null`.
+ * @property groupset - Groupset or drivetrain specification, or `null`.
+ * @property specs - Additional specifications (multiline), or `null`.
+ * @property purchaseSource - Purchase or acquisition source, or `null`.
+ * @property notes - Free-form notes and history (multiline), or `null`.
  * @property stravaGearId - Linked Strava gear id, or `null`.
  * @property garminConnectGearId - Linked Garmin Connect gear id, or `null`.
  */
@@ -42,6 +52,16 @@ export interface Gear {
   createdAt: string | null
   initialKms: number | null
   purchaseValue: number | null
+  purchaseDate: string | null
+  retiredDate: string | null
+  frameNumber: string | null
+  size: string | null
+  color: string | null
+  modelYear: number | null
+  groupset: string | null
+  specs: string | null
+  purchaseSource: string | null
+  notes: string | null
   stravaGearId: string | null
   garminConnectGearId: string | null
 }
@@ -74,6 +94,16 @@ export interface GearInput {
   createdAt: string | null
   initialKms: number | null
   purchaseValue: number | null
+  purchaseDate: string | null
+  retiredDate: string | null
+  frameNumber: string | null
+  size: string | null
+  color: string | null
+  modelYear: number | null
+  groupset: string | null
+  specs: string | null
+  purchaseSource: string | null
+  notes: string | null
 }
 
 /** One page of the paginated gears list. */
